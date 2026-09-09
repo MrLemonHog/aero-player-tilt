@@ -20,6 +20,25 @@ public class Config {
                             "the mod is installed on the server.")
                     .define("playerTilt", true);
 
+    public static final ModConfigSpec.BooleanValue ROTATE_CAMERA =
+            BUILDER.comment("Turn the CAMERA with the leaning body, or leave it lined up with the world.\n" +
+                            "\n" +
+                            "On, the view is the body's own eye: it leans with the deck, the horizon rolls,\n" +
+                            "and where you point is where the body points. That is the mod as it has always\n" +
+                            "worked, and it is what Aeronautics Camera Sync's own rotateCamera does for the\n" +
+                            "camera when nothing else is steering it.\n" +
+                            "\n" +
+                            "Off, only the ROTATION is dropped. The body still leans, is still drawn leaning,\n" +
+                            "still walks and jumps in the deck's frame, and the camera is still carried to\n" +
+                            "where that leaning head's eye actually is - it rides the body, so ducking under\n" +
+                            "a beam on a rolling deck still ducks the view. Only the roll and pitch of the\n" +
+                            "view itself are left at the world's, so the horizon stays flat and up is up.\n" +
+                            "\n" +
+                            "Aim follows the camera either way, so what the crosshair is on is what you hit.\n" +
+                            "Turning this on or off in the middle of a lean is walked over takeoverTicks like\n" +
+                            "any other hand-over, rather than snapping.")
+                    .define("rotateCamera", true);
+
     public static final ModConfigSpec.DoubleValue MIN_NORMAL_Y =
             BUILDER.comment("Maximum tilt threshold (0.0 - 1.0): the minimum Y of a deck normal that still\n" +
                             "counts as walkable. Surfaces steeper than this are never tilted onto, and a tilt\n" +

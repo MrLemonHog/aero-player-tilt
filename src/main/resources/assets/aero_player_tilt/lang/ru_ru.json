@@ -8,6 +8,8 @@
   "aero_player_tilt.configuration.enabled.tooltip": "Вкл/выкл мод.",
   "aero_player_tilt.configuration.playerTilt": "Наклон тела игрока",
   "aero_player_tilt.configuration.playerTilt.tooltip": "Наклоняет тело игрока",
+  "aero_player_tilt.configuration.rotateCamera": "Поворот камеры",
+  "aero_player_tilt.configuration.rotateCamera.tooltip": "Наклоняет камеру вместе с телом. Выкл. — камера выровнена по миру.",
   "aero_player_tilt.configuration.minNormalY": "Макс. угол наклона",
   "aero_player_tilt.configuration.minNormalY.tooltip": "Самый крутой пол, на котором ещё стоишь. 1.0 — только ровный.",
   "aero_player_tilt.configuration.minNormalY.world": "Правило этого мира, раздаётся всем, кто заходит. Включается ключом enforceMaxTilt в конфиге мира.",

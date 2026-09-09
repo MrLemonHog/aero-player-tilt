@@ -31,11 +31,12 @@ public final class TiltedZoom {
         if (AcsBridge.ACS.isSuppressed()) return null;
 
         Quaternionf lean = BodyTiltSource.handed();
-        if (lean == null) return null;
+        Quaternionf pose = BodyTiltSource.pose();
+        if (lean == null || pose == null) return null;
 
         float partialTick = camera.getPartialTickTime();
 
-        Vec3 eye = BodyTiltSource.cameraAnchor(player, camera.getPosition(), lean, partialTick);
+        Vec3 eye = BodyTiltSource.cameraAnchor(player, camera.getPosition(), pose, lean, partialTick);
 
         Vector3f back = lean.transform(new Vector3f(camera.getLookVector())).mul(-maxZoom);
 

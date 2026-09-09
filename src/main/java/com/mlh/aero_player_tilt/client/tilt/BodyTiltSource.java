@@ -68,48 +68,46 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
 
         Quaternionf lean = levelOff(MathUtils.toQuaternionf(body));
 
+        boolean rotates = rotatesCamera();
+        Quaternionf look = rotates ? new Quaternionf(lean) : new Quaternionf();
+
         if (!claiming) {
             claiming = true;
+            rotating = rotates;
 
-            camera.set(context.acsTilt());
+            beginTakeOver(context.acsTilt(), context.acsTilt(), look);
+        } else if (rotates != rotating) {
+            rotating = rotates;
 
-            takeOver.set(new Quaternionf(context.acsTilt())
-                    .mul(new Quaternionf(lean).conjugate()));
-
-            if (Float.isFinite(takeOver.lengthSquared()) && takeOver.lengthSquared() > 1.0e-9f) {
-                shorterWay(takeOver.normalize());
-            } else {
-                takeOver.identity();
-            }
-
-            takeOverSpan = PlayerTilt.isMeaningful(takeOver.w())
-                    ? (float) Config.value(Config.TAKEOVER_TICKS, 4.0)
-                    : 0f;
-            takeOverLeft = takeOverSpan;
+            beginTakeOver(frameHanded, framePose, look);
         }
 
-        Quaternionf handed = spendTakeOver(lean, context.deltaTicks());
+        Quaternionf handed = spendTakeOver(look, lean, context.deltaTicks());
 
         saidGoodbye = !PlayerTilt.isTilted(context.player());
 
         com.mlh.aero_player_tilt.client.debug.FrameTrace.handed(
-                lean, takeOverDegrees(), takeOverLeft);
+                handed, takeOverDegrees(), takeOverLeft);
 
         frameHanded.set(handed);
 
         return handed;
     }
 
+    private static boolean rotatesCamera() {
+        return Config.flag(Config.ROTATE_CAMERA, true);
+    }
+
     @Override
     @Nullable
     public Vec3 eyeOffset(TiltContext context) {
-        return cameraAnchor(context.player(), context.vanillaCameraPos(), frameHanded,
+        return cameraAnchor(context.player(), context.vanillaCameraPos(), framePose, frameHanded,
                         context.partialTick())
                 .subtract(context.cameraPosFor(frameHanded));
     }
 
     public static Vec3 cameraAnchor(Player player, Vec3 vanillaCameraPos, Quaternionf lean,
-                                    float partialTick) {
+                                    Quaternionf view, float partialTick) {
         double eyeHeight = player.getEyeHeight();
 
         Vec3 modelFeet = AcsBridge.ACS
@@ -127,27 +125,37 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
             modelFeet = vanillaFeet;
         }
 
-        Vector3d relative = new Vector3d(
-                vanillaCameraPos.x - vanillaFeet.x,
-                vanillaCameraPos.y - vanillaFeet.y,
-                vanillaCameraPos.z - vanillaFeet.z);
-        lean.transform(relative);
+        Vector3d head = lean.transform(new Vector3d(0.0, eyeHeight, 0.0));
 
-        return modelFeet.add(relative.x, relative.y, relative.z);
+        Vector3d boom = view.transform(new Vector3d(
+                vanillaCameraPos.x - vanillaFeet.x,
+                vanillaCameraPos.y - vanillaFeet.y - eyeHeight,
+                vanillaCameraPos.z - vanillaFeet.z));
+
+        return modelFeet.add(head.x + boom.x, head.y + boom.y, head.z + boom.z);
     }
 
     private static final double MAX_OFFSET = 0.5;
 
     private static final Quaternionf frameHanded = new Quaternionf();
 
+    private static final Quaternionf framePose = new Quaternionf();
+
     @Nullable
     public static Quaternionf handed() {
         return claiming ? new Quaternionf(frameHanded) : null;
     }
 
+    @Nullable
+    public static Quaternionf pose() {
+        return claiming ? new Quaternionf(framePose) : null;
+    }
+
     private static boolean warnedOffset;
 
     private static boolean claiming;
+
+    private static boolean rotating = true;
 
     private static boolean saidGoodbye;
 
@@ -155,30 +163,57 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
 
     private static final Quaternionf camera = new Quaternionf();
 
+    private static final Quaternionf anchor = new Quaternionf();
+
     private static float takeOverLeft;
     private static float takeOverSpan;
 
-    private static Quaternionf spendTakeOver(Quaternionf lean, float deltaTicks) {
+    private static void beginTakeOver(Quaternionf fromLook, Quaternionf fromPose,
+                                      Quaternionf look) {
+        camera.set(fromLook);
+        anchor.set(fromPose);
+
+        takeOver.set(new Quaternionf(fromLook).mul(new Quaternionf(look).conjugate()));
+
+        if (Float.isFinite(takeOver.lengthSquared()) && takeOver.lengthSquared() > 1.0e-9f) {
+            shorterWay(takeOver.normalize());
+        } else {
+            takeOver.identity();
+        }
+
+        takeOverSpan = PlayerTilt.isMeaningful(takeOver.w())
+                ? (float) Config.value(Config.TAKEOVER_TICKS, 4.0)
+                : 0f;
+        takeOverLeft = takeOverSpan;
+    }
+
+    private static Quaternionf spendTakeOver(Quaternionf look, Quaternionf lean,
+                                             float deltaTicks) {
         if (takeOverLeft <= 0f) {
             takeOver.identity();
-            return lean;
+            framePose.set(lean);
+            return look;
         }
 
         float before = ease(1f - takeOverLeft / takeOverSpan);
         takeOverLeft = Math.max(takeOverLeft - deltaTicks, 0f);
         float after = ease(1f - takeOverLeft / takeOverSpan);
 
-        float step = before >= 1f ? 1f : (after - before) / (1f - before);
+        float step = Math.min(1f, Math.max(0f, before >= 1f ? 1f : (after - before) / (1f - before)));
 
-        camera.slerp(lean, Math.min(1f, Math.max(0f, step))).normalize();
+        camera.slerp(look, step).normalize();
+        anchor.slerp(lean, step).normalize();
 
         if (takeOverLeft <= 0f) {
             takeOver.identity();
-            return lean;
+            framePose.set(lean);
+            return look;
         }
 
+        framePose.set(anchor);
+
         shorterWay(takeOver.set(new Quaternionf(camera)
-                .mul(new Quaternionf(lean).conjugate())).normalize());
+                .mul(new Quaternionf(look).conjugate())).normalize());
 
         return new Quaternionf(camera);
     }

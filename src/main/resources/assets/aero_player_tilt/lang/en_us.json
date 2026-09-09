@@ -8,6 +8,8 @@
   "aero_player_tilt.configuration.enabled.tooltip": "Turns the mod on or off.",
   "aero_player_tilt.configuration.playerTilt": "Tilt Player Body",
   "aero_player_tilt.configuration.playerTilt.tooltip": "Tilts the player's body",
+  "aero_player_tilt.configuration.rotateCamera": "Rotate Camera",
+  "aero_player_tilt.configuration.rotateCamera.tooltip": "Tilts the camera with the body. Off keeps the camera aligned with the world.",
   "aero_player_tilt.configuration.minNormalY": "Max Tilt Threshold",
   "aero_player_tilt.configuration.minNormalY.tooltip": "The steepest floor you can still stand on. 1.0 = flat only.",
   "aero_player_tilt.configuration.minNormalY.world": "A rule of this world, sent to everyone who joins. Turned on with enforceMaxTilt in the world's config.",

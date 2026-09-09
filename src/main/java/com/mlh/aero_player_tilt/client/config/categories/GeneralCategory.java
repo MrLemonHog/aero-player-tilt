@@ -19,6 +19,12 @@ public class GeneralCategory {
                 "aero_player_tilt.configuration.playerTilt.tooltip",
                 Config.PLAYER_TILT));
 
+        // TODO: сделать отдельную категорию "camera" и вынести туда rotateCamera
+        general.add(new ToggleButtonEntry(
+                "aero_player_tilt.configuration.rotateCamera",
+                "aero_player_tilt.configuration.rotateCamera.tooltip",
+                Config.ROTATE_CAMERA));
+
         addMaxTilt(general);
 
         addDeckGravity(general);
