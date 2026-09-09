@@ -1,0 +1,12 @@
+# Disable autocrlf on generated files, they always generate with LF
+# Add any extra files or paths here to make git stop saying they
+# are changed when only line endings change.
+src/generated/**/.cache/* text eol=lf
+src/generated/**/*.json text eol=lf
+
+# CI runs the Gradle wrapper through /bin/sh. A carriage return in its
+# shebang makes the kernel look for an interpreter that does not exist,
+# and the job dies with exit 127 before Gradle is ever reached.
+gradlew text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf

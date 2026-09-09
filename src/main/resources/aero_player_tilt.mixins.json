@@ -1,0 +1,47 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.mlh.aero_player_tilt.mixins",
+  "compatibilityLevel": "JAVA_21",
+  "mixinextras": {
+    "minVersion": "0.5.0"
+  },
+  "mixins": [
+    "BlockInsideTiltMixin",
+    "ClimbTiltMixin",
+    "CreativeFlightTiltMixin",
+    "EntityHitTiltMixin",
+    "EntityReachTiltMixin",
+    "JumpTiltMixin",
+    "PlayerFitTiltMixin",
+    "sable.BlockLandingTiltMixin",
+    "sable.DeckBedSleepMixin",
+    "sable.DeckBedSleepResyncMixin",
+    "sable.BlockPlacementTiltMixin",
+    "sable.EntitySubLevelUtilMixin",
+    "sable.SubLevelEntityCollisionMixin",
+    "sable.ActiveSableCompanionFeetPosMixin",
+    "sable.ServerPlayerDeckCarryMixin"
+  ],
+  "client": [
+    "client.BodyTiltMixin",
+    "client.ThirdPersonZoomMixin",
+    "client.TurnWithDeckMixin",
+    "client.DeckMomentumMixin",
+    "client.EntityRenderPivotMixin",
+    "client.ReplayWalkAnimationMixin",
+    "client.ReplayBodyTurnMixin",
+    "client.LightProbeTiltMixin",
+    "client.EntitySkyLightCentreMixin",
+    "client.StuckArrowTiltMixin",
+    "client.TiltedHitboxDebugMixin",
+    "client.acs.AcsFirstPersonBodyMixin",
+    "client.sable.EntityRenderVanillaEyeMixin",
+    "client.sable.EntitySubLevelRotationHelperMixin",
+    "client.sable.LocalPlayerSelfSoundMixin",
+    "client.sable.SubLevelEntityShadowRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
