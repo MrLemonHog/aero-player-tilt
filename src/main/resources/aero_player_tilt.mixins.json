@@ -25,6 +25,7 @@
   ],
   "client": [
     "client.BodyTiltMixin",
+    "client.BootsTickMixin",
     "client.ThirdPersonZoomMixin",
     "client.TurnWithDeckMixin",
     "client.DeckMomentumMixin",

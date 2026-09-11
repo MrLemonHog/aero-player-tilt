@@ -16,17 +16,22 @@ final class RemoteTiltSmoother {
 
     private boolean seeded;
 
+    private boolean boots;
+
     @Nullable
     UUID frameId() {
         return frameId;
     }
 
     void advance(Quaterniondc target,
+                 boolean booted,
                  @Nullable UUID targetFrameId,
                  @Nullable Quaterniondc oldFrameNow,
                  @Nullable Quaterniondc newFrameNow,
                  double halfLifeTicks,
                  float deltaTicks) {
+        this.boots = booted;
+
         if (!seeded) {
             value.set(target).normalize();
             frameId = targetFrameId;
@@ -56,6 +61,9 @@ final class RemoteTiltSmoother {
         if (frameNow == null) return dest;
 
         dest.premul(frameNow).normalize();
+
+        if (boots) return dest;
+
         PlayerTilt.dropTwist(dest);
         return PlayerTilt.clampToWalkable(dest);
     }

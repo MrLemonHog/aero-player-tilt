@@ -27,6 +27,13 @@ public class GeneralCategory {
 
         addMaxTilt(general);
 
+        general.add(new ToggleButtonEntry(
+                "aero_player_tilt.configuration.gripSlopes",
+                "aero_player_tilt.configuration.gripSlopes.tooltip",
+                Config.GRIP_SLOPES)
+                .withNotice("aero_player_tilt.configuration.gripSlopes.boots",
+                        () -> Config.MAGNETIC_BOOTS.get()));
+
         addDeckGravity(general);
 
         general.add(new ThresholdEntry(
@@ -90,10 +97,14 @@ public class GeneralCategory {
                 0.0, 1.0,
                 !ours)
                 .withReadout(value -> {
-                    if (value <= 0.0) return "—";
+                    if (value <= 0.0) return "∞";
                     if (value >= 1.0) return "0°";
                     return String.format(java.util.Locale.ROOT, "%.0f°",
                             Math.toDegrees(Math.acos(value)));
-                }));
+                })
+                .withNotice("aero_player_tilt.configuration.minNormalY.grip",
+                        () -> com.mlh.aero_player_tilt.tilt.TiltPolicy.minNormalY() < 0.8
+                                && !Config.GRIP_SLOPES.get()
+                                && !Config.MAGNETIC_BOOTS.get()));
     }
 }

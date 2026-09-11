@@ -88,6 +88,8 @@ public class SubLevelEntityCollisionMixin {
                                                      @Local(argsOnly = true) Entity entity) {
         if (!PlayerTilt.isTilted(entity)) return normalizedMtv.dot(entityUp);
 
+        if (com.mlh.aero_player_tilt.tilt.Boots.holding(entity)) return normalizedMtv.dot(entityUp);
+
         return normalizedMtv.y;
     }
 
@@ -101,6 +103,19 @@ public class SubLevelEntityCollisionMixin {
             return entityUp.mul(alongEntityUp, maxMTV);
         }
 
+        if (com.mlh.aero_player_tilt.tilt.Boots.holding(entity)) {
+            aeroCamSync$recordMtv(entity, "boots", maxMTV);
+
+            Vector3d support = com.mlh.aero_player_tilt.tilt.Boots.support(entity, new Vector3d());
+            double outwards = support == null ? 0.0 : support.dot(maxMTV);
+
+            if (outwards != 0.0) {
+                return maxMTV.set(support).mul(Math.signum(outwards));
+            }
+
+            return entityUp.mul(alongEntityUp, maxMTV);
+        }
+
         if (entity instanceof DeckFlightAccess flight && flight.aero$inDeckFlight()) {
             aeroCamSync$recordMtv(entity, "vertDeck", maxMTV);
             return entityUp.mul(alongEntityUp, maxMTV);
@@ -109,7 +124,7 @@ public class SubLevelEntityCollisionMixin {
         double vertical = maxMTV.y;
         double depth = maxMTV.length();
 
-        if (depth < 1.0e-9 || vertical / depth < PlayerTilt.walkableNormalY()) {
+        if (depth < 1.0e-9 || vertical / depth < PlayerTilt.floorNormalY()) {
             aeroCamSync$recordMtv(entity, "wallKeep", maxMTV);
             aeroCamSync$armStraightenScale(entity, 1.0);
             return entityUp.mul(alongEntityUp, maxMTV);
@@ -160,7 +175,7 @@ public class SubLevelEntityCollisionMixin {
     private static Vector3d aeroCamSync$horizontalWallLoss(Vector3d normalizedMtv, double alongNormal,
                                                            @Local(argsOnly = true) Entity entity,
                                                            @Local(argsOnly = true) LevelReusedVectors sink) {
-        if (!PlayerTilt.isTilted(entity)) {
+        if (!PlayerTilt.isTilted(entity) || com.mlh.aero_player_tilt.tilt.Boots.holding(entity)) {
             return normalizedMtv.mul(alongNormal);
         }
 
@@ -212,6 +227,8 @@ public class SubLevelEntityCollisionMixin {
         if (length < 1.0e-9) return mtv;
 
         if (!PlayerTilt.isTilted(entity)) return mtv;
+
+        if (com.mlh.aero_player_tilt.tilt.Boots.holding(entity)) return mtv;
 
         Vector3dc entityUp = sink.entityUpDirection;
 

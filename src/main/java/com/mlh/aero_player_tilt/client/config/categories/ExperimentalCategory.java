@@ -10,6 +10,41 @@ public class ExperimentalCategory {
     public static ConfigCategory build() {
         ConfigCategory cat = new ConfigCategory("aero_player_tilt.configuration.experimental");
 
+        cat.add(new SeparatorEntry("aero_player_tilt.configuration.boots.separator"));
+
+        cat.add(new ToggleButtonEntry(
+                "aero_player_tilt.configuration.magneticBoots",
+                "aero_player_tilt.configuration.magneticBoots.tooltip",
+                Config.MAGNETIC_BOOTS));
+
+        cat.add(new SliderEntry(
+                "aero_player_tilt.configuration.magneticReach",
+                "aero_player_tilt.configuration.magneticReach.tooltip",
+                Config.MAGNETIC_REACH,
+                0.1, 2.0, 0.05,
+                0.1, 4.0));
+
+        cat.add(new SliderEntry(
+                "aero_player_tilt.configuration.magneticLean",
+                "aero_player_tilt.configuration.magneticLean.tooltip",
+                Config.MAGNETIC_LEAN,
+                0.0, 0.5, 0.01,
+                0.0, 0.5));
+
+        cat.add(new SliderEntry(
+                "aero_player_tilt.configuration.magneticPull",
+                "aero_player_tilt.configuration.magneticPull.tooltip",
+                Config.MAGNETIC_PULL,
+                0.25, 4.0, 0.05,
+                0.25, 6.0));
+
+        cat.add(new SliderEntry(
+                "aero_player_tilt.configuration.magneticSmooth",
+                "aero_player_tilt.configuration.magneticSmooth.tooltip",
+                Config.MAGNETIC_SMOOTH,
+                0.0, 6.0, 0.05,
+                0.0, 20.0));
+
         cat.add(new SeparatorEntry("aero_player_tilt.configuration.entityTilt.separator"));
 
         addEntityTilt(cat);

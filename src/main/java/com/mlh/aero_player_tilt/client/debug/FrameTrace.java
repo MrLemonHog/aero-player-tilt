@@ -48,6 +48,8 @@ public final class FrameTrace {
 
     private static boolean announced;
 
+    private static boolean warnedFormat;
+
     private static int pendingTail = -1;
     private static String pendingWhy = "";
     private static long lastDumpMs;
@@ -170,6 +172,7 @@ public final class FrameTrace {
 
         Vec3 motion = player.getDeltaMovement();
 
+        try {
         LINES[head] = String.format(Locale.ROOT,
                 "f=%d t=%d+%.2f dt=%.3f | STEP int=%s raw=%s acs=%s cam=%s"
                         + " | cam pos=%s body pos=%s yaw=%.2f pitch=%.2f view=%s"
@@ -177,6 +180,7 @@ public final class FrameTrace {
                         + " | hand lean=%s over=%s left=%.1f claim=%d"
                         + " | body int=%s raw=%s snap=%s>%s"
                         + " | floor tgt=%s hits=%d share=%.2f hold=%d ht=%.1f air=%d land=%s"
+                        + " | boots %s"
                         + " | deck trk=%s std=%s foot=%s"
                         + " | plr g=%d y=%.4f dy=%s dmy=%s",
                 frame,
@@ -198,10 +202,18 @@ public final class FrameTrace {
                 measured ? floorHits : -1, measured ? floorShare : 0.0,
                 measured && hold ? 1 : 0, BodyTiltController.holdTicksSpent(),
                 measured && airborneOverDeck ? 1 : 0, landing(),
+                com.mlh.aero_player_tilt.client.tilt.BootsController.trace(),
                 measured ? shortId(trackedDeck) : "?", measured ? shortId(standingDeck) : "?",
                 StandingDeck.debug().replace(' ', '_'),
                 player.onGround() ? 1 : 0, player.getY(),
                 fmt(player.getY() - lastY), fmt(motion.y));
+        } catch (RuntimeException broken) {
+            if (!warnedFormat) {
+                warnedFormat = true;
+                AeroPlayerTilt.LOGGER.warn("[trace] could not write a line", broken);
+            }
+            LINES[head] = "f=" + frame + " | trace line failed: " + broken;
+        }
 
         head = (head + 1) % RING;
         if (filled < RING) filled++;
@@ -228,6 +240,12 @@ public final class FrameTrace {
 
     private static double jumpDegrees() {
         return Config.value(Config.DEBUG_FRAME_TRACE_JUMP, 0.75);
+    }
+
+    public static void mark(String why) {
+        if (!enabled()) return;
+
+        arm(why);
     }
 
     private static void arm(String why) {

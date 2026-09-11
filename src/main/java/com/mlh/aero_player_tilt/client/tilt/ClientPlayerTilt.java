@@ -78,7 +78,8 @@ public final class ClientPlayerTilt {
                     ? null
                     : frameNow(mc.level, smoother.frameId(), partialTicks);
 
-            smoother.advance(target, deckId, oldFrame, newFrame, halfLife, deltaTicks);
+            smoother.advance(target, snapshot.isBooted(), deckId, oldFrame, newFrame,
+                    halfLife, deltaTicks);
         });
 
         SMOOTHERS.keySet().removeIf(id -> !REMOTE.containsKey(id));
@@ -142,7 +143,9 @@ public final class ClientPlayerTilt {
     }
 
     private static boolean localActive() {
-        return localAllowed() && PlayerTilt.isMeaningful(BodyTiltController.getRawTiltW());
+        if (!localAllowed()) return false;
+
+        return BootsController.attached() || PlayerTilt.isMeaningful(BodyTiltController.getRawTiltW());
     }
 
     private static boolean localAllowed() {
@@ -167,12 +170,27 @@ public final class ClientPlayerTilt {
         }
 
         Quaternionf tilt = BodyTiltController.getRawTilt();
+        boolean boots = BootsController.attached();
 
         Quaternionf carrier = BodyTiltController.getCarrierRotation();
         LOCAL.set(new Quaterniond(tilt),
                 carrier != null ? new Quaterniond(carrier) : null,
                 BodyTiltController.getCarrierId(),
-                PlayerTilt.isMeaningful(tilt.w()), gameTime);
+                boots || PlayerTilt.isMeaningful(tilt.w()), boots, gameTime);
+    }
+
+    public static boolean isBooted(Player player) {
+        if (Minecraft.getInstance().player == player) return BootsController.attached();
+
+        TiltSnapshot snapshot = REMOTE.get(player.getId());
+        return snapshot != null && snapshot.isActive() && snapshot.isBooted();
+    }
+
+    @Nullable
+    public static org.joml.Vector3d supportUp(Player player) {
+        if (Minecraft.getInstance().player != player) return null;
+
+        return BootsController.supportUp();
     }
 
     @Nullable
@@ -198,11 +216,15 @@ public final class ClientPlayerTilt {
     private static Quaterniond local(Player player, float partialTicks) {
         if (!localAllowed()) return null;
 
-        return PlayerTilt.leanPartially(new Quaterniond(BodyTiltController.getRawTilt()));
+        Quaterniond tilt = new Quaterniond(BodyTiltController.getRawTilt());
+
+        if (BootsController.attached()) return tilt;
+
+        return PlayerTilt.leanPartially(tilt);
     }
 
     public static void accept(int entityId, Quaternionf tilt, Quaternionf worldTilt,
-                              @Nullable java.util.UUID deckId, boolean active) {
+                              @Nullable java.util.UUID deckId, boolean active, boolean boots) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
 
@@ -211,11 +233,12 @@ public final class ClientPlayerTilt {
             return;
         }
 
-        put(entityId, tilt, worldTilt, deckId, active, mc.level.getGameTime());
+        put(entityId, tilt, worldTilt, deckId, active, boots, mc.level.getGameTime());
     }
 
     public static void put(int entityId, Quaternionf tilt, Quaternionf worldTilt,
-                           @Nullable java.util.UUID deckId, boolean active, long gameTime) {
+                           @Nullable java.util.UUID deckId, boolean active, boolean boots,
+                           long gameTime) {
         Quaterniond world = new Quaterniond(tilt);
         Quaterniond stamp = new Quaterniond();
 
@@ -231,7 +254,7 @@ public final class ClientPlayerTilt {
         if (!active) {
             TiltSnapshot existing = REMOTE.get(entityId);
             if (existing != null) {
-                existing.set(world, stamp, deckId, false, gameTime);
+                existing.set(world, stamp, deckId, false, boots, gameTime);
             }
             return;
         }
@@ -243,7 +266,7 @@ public final class ClientPlayerTilt {
             REMOTE.put(entityId, snapshot);
         }
 
-        snapshot.set(world, stamp, deckId, true, gameTime);
+        snapshot.set(world, stamp, deckId, true, boots, gameTime);
 
         if (fresh) snapshot.beginTick();
     }

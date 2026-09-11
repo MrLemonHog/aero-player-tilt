@@ -30,6 +30,8 @@ public final class BodyTiltController {
     @javax.annotation.Nullable
     private static java.util.UUID carrierId = null;
 
+    private static boolean releasing = false;
+
     public static boolean shouldComputeTilt(Player player) {
         if (player == null) return false;
         if (!Config.isLoaded() || !Config.MOD_ENABLED.get()) return false;
@@ -48,8 +50,34 @@ public final class BodyTiltController {
             carrierId = null;
             holdTicks = 0f;
             wasPredicting = false;
+            releasing = false;
         }
         wasComputingTilt = computing;
+    }
+
+    public static void driveFromBoots(Quaternionf frame,
+                                      Quaternionf deckOrientation,
+                                      java.util.UUID deckId) {
+        bodyTilt.set(frame);
+
+        carrierRotation.set(deckOrientation);
+        carrierId = deckId;
+
+        lastShipRotation.set(deckOrientation);
+        lastShipId = deckId;
+        hasLastShipRotation = true;
+
+        holdTicks = 0f;
+        wasPredicting = false;
+        releasing = false;
+    }
+
+    public static void bootsReleased() {
+        releasing = true;
+        holdTicks = 0f;
+        wasPredicting = false;
+        hasLastShipRotation = false;
+        lastShipId = null;
     }
 
     public static void updateBodyTilt(@javax.annotation.Nullable Vector3f surfaceNormal,
@@ -133,9 +161,20 @@ public final class BodyTiltController {
 
         bodyTilt.slerp(target, smoothingStep(deltaTime, halfLife));
 
-        clampTilt(bodyTilt, maxTiltAngle());
+        settleClamp();
 
         if (!PlayerTilt.isMeaningful(target.w())) settleUpright();
+    }
+
+    private static void settleClamp() {
+        float max = maxTiltAngle();
+
+        if (releasing) {
+            if (tiltAngle(bodyTilt) > max) return;
+            releasing = false;
+        }
+
+        clampTilt(bodyTilt, max);
     }
 
     private static void settleUpright() {
@@ -163,7 +202,7 @@ public final class BodyTiltController {
         bodyTilt.slerp(new Quaternionf().rotationTo(UP, landing.normal()),
                 Math.min(1f, Math.max(0f, Math.min(step, aimSpeedLimit(deltaTime)))));
 
-        clampTilt(bodyTilt, maxTiltAngle());
+        settleClamp();
     }
 
     private static final Vector3f lastAim = new Vector3f();
@@ -203,6 +242,7 @@ public final class BodyTiltController {
 
     public static void resetTilt() {
         bodyTilt.identity();
+        releasing = false;
         hasLastShipRotation = false;
         lastShipId = null;
         carrierId = null;
@@ -216,10 +256,7 @@ public final class BodyTiltController {
     }
 
     private static float maxTiltAngle() {
-        double minNormalY = PlayerTilt.walkableNormalY();
-        if (minNormalY <= 0.0) return (float) Math.PI;
-        if (minNormalY >= 1.0) return 0f;
-        return (float) Math.acos(minNormalY);
+        return (float) PlayerTilt.maxTiltAngle();
     }
 
     private static float tiltAngle(Quaternionf q) {

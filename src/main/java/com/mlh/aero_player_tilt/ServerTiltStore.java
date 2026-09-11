@@ -20,6 +20,7 @@ public final class ServerTiltStore {
         final Quaterniond bodyRawDeck = new Quaterniond();
         @Nullable UUID bodyRawDeckId;
         boolean bodyActive;
+        boolean bodyBoots;
     }
 
     public static final class BodySample {
@@ -27,19 +28,21 @@ public final class ServerTiltStore {
         public final Quaterniond deck = new Quaterniond();
         @Nullable public UUID deckId;
         public boolean active;
+        public boolean boots;
     }
 
     public static void set(UUID playerId, Quaternionf bodyTilt, boolean bodyActive, long gameTime) {
-        set(playerId, bodyTilt, bodyActive, gameTime, null, null);
+        set(playerId, bodyTilt, bodyActive, false, gameTime, null, null);
     }
 
-    public static void set(UUID playerId, Quaternionf bodyTilt, boolean bodyActive,
+    public static void set(UUID playerId, Quaternionf bodyTilt, boolean bodyActive, boolean boots,
                            long gameTime,
                            @Nullable org.joml.Quaterniondc deck, @Nullable UUID deckId) {
         Entry entry = ENTRIES.computeIfAbsent(playerId, id -> new Entry());
 
         entry.bodyRaw.set(bodyTilt);
         entry.bodyActive = bodyActive;
+        entry.bodyBoots = boots;
 
         if (deck != null && deckId != null) {
             entry.bodyRawDeck.set(deck);
@@ -49,7 +52,7 @@ public final class ServerTiltStore {
             entry.bodyRawDeckId = null;
         }
 
-        entry.body.set(new Quaterniond(bodyTilt), deck, deckId, bodyActive, gameTime);
+        entry.body.set(new Quaterniond(bodyTilt), deck, deckId, bodyActive, boots, gameTime);
     }
 
     public static void beginTick() {
@@ -87,6 +90,7 @@ public final class ServerTiltStore {
         dest.deck.set(entry.bodyRawDeck);
         dest.deckId = entry.bodyRawDeckId;
         dest.active = entry.bodyActive;
+        dest.boots = entry.bodyBoots;
         return true;
     }
 
@@ -99,6 +103,11 @@ public final class ServerTiltStore {
     public static boolean isBodyActive(UUID playerId) {
         Entry entry = ENTRIES.get(playerId);
         return entry != null && entry.bodyActive;
+    }
+
+    public static boolean isBooted(UUID playerId) {
+        Entry entry = ENTRIES.get(playerId);
+        return entry != null && entry.bodyActive && entry.bodyBoots;
     }
 
     public static boolean anyBodyActive() {

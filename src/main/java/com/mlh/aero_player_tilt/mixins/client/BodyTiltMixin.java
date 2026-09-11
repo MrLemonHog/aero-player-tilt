@@ -33,7 +33,9 @@ public abstract class BodyTiltMixin {
 
         if ((Object) this != mc.gameRenderer.getMainCamera()) return;
 
-        DebugRayRenderer.clear();
+        if (!com.mlh.aero_player_tilt.client.tilt.BootsController.attached()) {
+            DebugRayRenderer.clear();
+        }
 
         com.mlh.aero_player_tilt.client.tilt.ClientPlayerTilt.advanceRemote(
                 mc.getTimer().getRealtimeDeltaTicks(), partialTick);
@@ -47,12 +49,19 @@ public abstract class BodyTiltMixin {
         if (!BodyTiltController.shouldComputeTilt(mc.player)) {
             StandingDeck.forget();
             com.mlh.aero_player_tilt.client.utils.DeckZone.forget();
+            com.mlh.aero_player_tilt.client.tilt.BootsController.release();
+            return;
+        }
+
+        float deltaTime = mc.getTimer().getRealtimeDeltaTicks();
+
+        if (com.mlh.aero_player_tilt.client.tilt.BootsController.render(partialTick)) {
+            StandingDeck.forget();
+            com.mlh.aero_player_tilt.client.utils.DeckZone.forget();
             return;
         }
 
         boolean suppressed = AcsBridge.ACS.isSuppressed();
-
-        float deltaTime = mc.getTimer().getRealtimeDeltaTicks();
 
         ClientSubLevel tracked = SubLevelTracker.getClientSubLevel(mc.player);
 

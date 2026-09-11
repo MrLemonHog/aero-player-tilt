@@ -6,7 +6,7 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public class NetworkHandler {
-    private static final String CHANNEL_VERSION = "7";
+    private static final String CHANNEL_VERSION = "8";
 
     public static void register(RegisterPayloadHandlersEvent event) {
         final PayloadRegistrar registrar = event.registrar(CHANNEL_VERSION)

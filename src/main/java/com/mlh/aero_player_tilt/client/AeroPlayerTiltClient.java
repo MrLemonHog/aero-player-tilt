@@ -103,6 +103,7 @@ public class AeroPlayerTiltClient {
         com.mlh.aero_player_tilt.client.tilt.TiltPrediction.forget();
         com.mlh.aero_player_tilt.client.tilt.ReplayAnchor.clear();
         com.mlh.aero_player_tilt.client.utils.SubLevelTracker.forgetDeck();
+        com.mlh.aero_player_tilt.client.tilt.BootsController.forget();
         com.mlh.aero_player_tilt.client.debug.FrameTrace.forget();
         SideManager.reset();
         if (Config.DEBUG_MESSAGES.get()) {

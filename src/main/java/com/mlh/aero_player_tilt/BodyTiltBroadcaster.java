@@ -30,6 +30,7 @@ public final class BodyTiltBroadcaster {
         final Quaternionf value = new Quaternionf();
         @Nullable UUID deckId;
         boolean active;
+        boolean boots;
         long tick;
     }
 
@@ -50,6 +51,7 @@ public final class BodyTiltBroadcaster {
 
             boolean known = ServerTiltStore.readBodyForBroadcast(id, SAMPLE);
             boolean active = known && SAMPLE.active;
+            boolean boots = active && SAMPLE.boots;
             UUID deckId = null;
 
             if (!known) {
@@ -66,6 +68,7 @@ public final class BodyTiltBroadcaster {
 
             boolean changed = sent == null
                     || sent.active != active
+                    || sent.boots != boots
                     || !Objects.equals(sent.deckId, deckId)
                     || (1.0 - Math.abs(sent.value.dot(current))) > CHANGE_EPSILON
                     || gameTime - sent.tick >= KEEPALIVE_TICKS;
@@ -79,10 +82,11 @@ public final class BodyTiltBroadcaster {
             sent.value.set(current);
             sent.deckId = deckId;
             sent.active = active;
+            sent.boots = boots;
             sent.tick = gameTime;
 
             broadcast(players, subject,
-                    BodyTiltPayload.of(subject.getId(), current, active, deckId, WORLD));
+                    BodyTiltPayload.of(subject.getId(), current, active, boots, deckId, WORLD));
 
             if (!active) LAST_SENT.remove(id);
         }
@@ -101,8 +105,8 @@ public final class BodyTiltBroadcaster {
         Quaternionf tilt = new Quaternionf();
         UUID deckId = toDeckRelative(sample, tilt);
 
-        PacketDistributor.sendToPlayer(viewer, BodyTiltPayload.of(subject.getId(), tilt, true, deckId,
-                new Quaternionf(sample.tilt)));
+        PacketDistributor.sendToPlayer(viewer, BodyTiltPayload.of(subject.getId(), tilt, true,
+                sample.boots, deckId, new Quaternionf(sample.tilt)));
     }
 
     @Nullable

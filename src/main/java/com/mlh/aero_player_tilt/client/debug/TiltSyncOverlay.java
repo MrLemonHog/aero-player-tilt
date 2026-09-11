@@ -63,7 +63,9 @@ public final class TiltSyncOverlay {
 
         Quaterniond leanQ = body == null
                 ? new Quaterniond()
-                : new Quaterniond(BodyTiltSource.levelOff(MathUtils.toQuaternionf(body)));
+                : (com.mlh.aero_player_tilt.tilt.Boots.holding(player)
+                        ? new Quaterniond(body)
+                        : new Quaterniond(BodyTiltSource.levelOff(MathUtils.toQuaternionf(body))));
 
         double bodyAngle = degrees(bodyQ);
         double leanAngle = degrees(leanQ);
@@ -113,6 +115,12 @@ public final class TiltSyncOverlay {
         String footing = com.mlh.aero_player_tilt.client.utils.StandingDeck.debug();
         y = row(gfx, right, y, "foot", footing,
                 footing.indexOf('<') < 0 ? VALUE : WARN);
+
+        String boots = com.mlh.aero_player_tilt.client.tilt.BootsController.debug();
+        if (!"-".equals(boots)) {
+            y = row(gfx, right, y, "hold", boots,
+                    com.mlh.aero_player_tilt.client.tilt.BootsController.attached() ? GOOD : LABEL);
+        }
 
         String source = client == null ? null : client.tiltSource();
         boolean ours = AeroPlayerTilt.MODID.equals(source);

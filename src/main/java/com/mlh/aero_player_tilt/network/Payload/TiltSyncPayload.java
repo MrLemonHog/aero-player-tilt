@@ -15,6 +15,7 @@ import javax.annotation.Nullable;
 import java.util.UUID;
 
 public record TiltSyncPayload(float bx, float by, float bz, float bw, boolean bodyActive,
+                              boolean boots,
                               @Nullable UUID deckId,
                               float dx, float dy, float dz, float dw)
         implements CustomPacketPayload {
@@ -27,6 +28,7 @@ public record TiltSyncPayload(float bx, float by, float bz, float bw, boolean bo
                         buf.writeFloat(p.bx); buf.writeFloat(p.by);
                         buf.writeFloat(p.bz); buf.writeFloat(p.bw);
                         buf.writeBoolean(p.bodyActive);
+                        buf.writeBoolean(p.boots);
 
                         buf.writeBoolean(p.deckId != null);
                         if (p.deckId != null) {
@@ -39,26 +41,27 @@ public record TiltSyncPayload(float bx, float by, float bz, float bw, boolean bo
                         float bx = buf.readFloat(), by = buf.readFloat();
                         float bz = buf.readFloat(), bw = buf.readFloat();
                         boolean active = buf.readBoolean();
+                        boolean boots = buf.readBoolean();
 
                         if (!buf.readBoolean()) {
-                            return new TiltSyncPayload(bx, by, bz, bw, active,
+                            return new TiltSyncPayload(bx, by, bz, bw, active, boots,
                                     null, 0f, 0f, 0f, 1f);
                         }
 
                         UUID deckId = buf.readUUID();
-                        return new TiltSyncPayload(bx, by, bz, bw, active, deckId,
+                        return new TiltSyncPayload(bx, by, bz, bw, active, boots, deckId,
                                 buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat());
                     }
             );
 
-    public static TiltSyncPayload from(Quaternionf body, boolean bodyActive,
+    public static TiltSyncPayload from(Quaternionf body, boolean bodyActive, boolean boots,
                                        @Nullable UUID deckId, @Nullable Quaterniondc deck) {
         if (deckId == null || deck == null) {
-            return new TiltSyncPayload(body.x, body.y, body.z, body.w, bodyActive,
+            return new TiltSyncPayload(body.x, body.y, body.z, body.w, bodyActive, boots,
                     null, 0f, 0f, 0f, 1f);
         }
 
-        return new TiltSyncPayload(body.x, body.y, body.z, body.w, bodyActive, deckId,
+        return new TiltSyncPayload(body.x, body.y, body.z, body.w, bodyActive, boots, deckId,
                 (float) deck.x(), (float) deck.y(), (float) deck.z(), (float) deck.w());
     }
 
@@ -80,7 +83,7 @@ public record TiltSyncPayload(float bx, float by, float bz, float bw, boolean bo
             }
 
             ServerTiltStore.set(player.getUUID(),
-                    payload.bodyQuaternion(), true,
+                    payload.bodyQuaternion(), true, payload.boots(),
                     player.level().getGameTime(),
                     payload.deckId() == null ? null : payload.deckQuaternion(),
                     payload.deckId());

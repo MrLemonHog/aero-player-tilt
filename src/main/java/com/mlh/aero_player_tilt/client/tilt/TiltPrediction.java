@@ -152,7 +152,7 @@ public final class TiltPrediction {
         Vector3f normal = MathUtils.transformToWorldSpace(
                 MathUtils.directionToVector(hit.getDirection()), space.logicalPose().orientation());
 
-        if (normal.y < (float) com.mlh.aero_player_tilt.tilt.PlayerTilt.walkableNormalY()) return null;
+        if (normal.y < (float) com.mlh.aero_player_tilt.tilt.PlayerTilt.floorNormalY()) return null;
 
         Vec3 toContact = toWorld(space, hit.getLocation()).subtract(eye);
         if (toContact.dot(drift) <= 0.0) return null;
@@ -191,7 +191,7 @@ public final class TiltPrediction {
             normal = MathUtils.transformToWorldSpace(normal, hitSpace.logicalPose().orientation());
         }
 
-        if (normal.y < (float) com.mlh.aero_player_tilt.tilt.PlayerTilt.walkableNormalY()) return null;
+        if (normal.y < (float) com.mlh.aero_player_tilt.tilt.PlayerTilt.floorNormalY()) return null;
 
         Vec3 contact = toWorld(hitSpace, hit.getLocation());
 

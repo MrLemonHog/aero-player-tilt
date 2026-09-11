@@ -38,6 +38,11 @@ public final class DeckTurn {
             return;
         }
 
+        if (com.mlh.aero_player_tilt.tilt.Boots.holding(player)) {
+            standDown("boots");
+            return;
+        }
+
         ClientSubLevel deck = deckOf(player);
         if (deck == null) {
             standDown("nodeck");
@@ -105,6 +110,7 @@ public final class DeckTurn {
 
         if (!player.onGround() || player.getAbilities().flying) return;
         if (player.getVehicle() != null || !PlayerTilt.isTilted(player)) return;
+        if (com.mlh.aero_player_tilt.tilt.Boots.holding(player)) return;
 
         net.minecraft.world.phys.Vec3 motion = player.getDeltaMovement();
         if (motion.x == 0.0 && motion.z == 0.0) return;

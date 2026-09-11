@@ -63,7 +63,7 @@ public final class DeckZone {
         int inside = 0;
         List<SurfaceRaycaster.Patch> decks = new ArrayList<>(2);
 
-        float minNormalY = (float) com.mlh.aero_player_tilt.tilt.PlayerTilt.walkableNormalY();
+        float minNormalY = (float) com.mlh.aero_player_tilt.tilt.PlayerTilt.floorNormalY();
 
         for (SubLevel subLevel : nearby) {
             if (!(subLevel instanceof ClientSubLevel deck)) continue;
@@ -110,7 +110,7 @@ public final class DeckZone {
         Vector3f up = MathUtils.transformToWorldSpace(
                 new Vector3f(0f, 1f, 0f), held.renderPose(partialTick).orientation());
 
-        if (up.y < (float) com.mlh.aero_player_tilt.tilt.PlayerTilt.walkableNormalY()) {
+        if (up.y < (float) com.mlh.aero_player_tilt.tilt.PlayerTilt.floorNormalY()) {
             forget();
             return SurfaceRaycaster.Floor.NONE;
         }

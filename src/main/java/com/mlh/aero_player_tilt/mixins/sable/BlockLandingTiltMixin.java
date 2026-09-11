@@ -18,6 +18,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class BlockLandingTiltMixin {
     @Inject(method = "updateEntityAfterFallOn", at = @At("HEAD"), cancellable = true)
     private void aeroCamSync$killSlideVelocity(BlockGetter level, Entity entity, CallbackInfo ci) {
+        if (com.mlh.aero_player_tilt.tilt.Boots.holding(entity)) {
+            aeroCamSync$stopAgainstFace(entity);
+            ci.cancel();
+            return;
+        }
+
         if (aeroCamSync$landDeckFlight(entity)) {
             ci.cancel();
             return;
@@ -27,6 +33,21 @@ public class BlockLandingTiltMixin {
 
         entity.setDeltaMovement(entity.getDeltaMovement().multiply(1.0, 0.0, 1.0));
         ci.cancel();
+    }
+
+    @Unique
+    private static void aeroCamSync$stopAgainstFace(Entity entity) {
+        Vector3d up = com.mlh.aero_player_tilt.tilt.Boots.support(entity, new Vector3d());
+        if (up == null) {
+            entity.setDeltaMovement(entity.getDeltaMovement().multiply(1.0, 0.0, 1.0));
+            return;
+        }
+
+        Vec3 step = entity.getDeltaMovement();
+        double into = up.x * step.x + up.y * step.y + up.z * step.z;
+        if (into >= 0.0) return;
+
+        entity.setDeltaMovement(step.subtract(up.x * into, up.y * into, up.z * into));
     }
 
     @Unique

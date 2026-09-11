@@ -1,6 +1,8 @@
 package com.mlh.aero_player_tilt.mixins;
 
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.mlh.aero_player_tilt.client.config.Config;
+import com.mlh.aero_player_tilt.tilt.Boots;
 import com.mlh.aero_player_tilt.tilt.DeckFlightAccess;
 import com.mlh.aero_player_tilt.tilt.DeckGravity;
 import com.mlh.aero_player_tilt.tilt.JumpDiagnostics;
@@ -19,6 +21,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -33,6 +36,9 @@ public abstract class JumpTiltMixin implements DeckFlightAccess {
 
     @Unique
     private static final double AERO$AIR_DRAG = 0.91;
+
+    @Unique
+    private static final double AERO$SETTLE = 0.003;
 
     @Unique
     private boolean aero$deckJump = false;
@@ -61,6 +67,35 @@ public abstract class JumpTiltMixin implements DeckFlightAccess {
     @Unique
     private Vec3 aero$stepIntoMove = Vec3.ZERO;
 
+    @Redirect(method = "aiStep",
+            at = @At(value = "INVOKE",
+                    target = "Lnet/minecraft/world/entity/LivingEntity;setDeltaMovement(DDD)V",
+                    ordinal = 0))
+    private void aero$settleInBodyFrame(LivingEntity self, double x, double y, double z) {
+        if (!Boots.holding(self)) {
+            self.setDeltaMovement(x, y, z);
+            return;
+        }
+
+        Vector3d up = Boots.support(self, new Vector3d());
+        if (up == null) {
+            self.setDeltaMovement(x, y, z);
+            return;
+        }
+
+        Vec3 raw = self.getDeltaMovement();
+
+        double into = raw.x * up.x + raw.y * up.y + raw.z * up.z;
+        Vector3d along = new Vector3d(raw.x, raw.y, raw.z).fma(-into, up);
+
+        if (along.length() < AERO$SETTLE) along.zero();
+        if (Math.abs(into) < AERO$SETTLE) into = 0.0;
+
+        along.fma(into, up);
+
+        self.setDeltaMovement(along.x, along.y, along.z);
+    }
+
     @Inject(method = "aiStep",
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/world/entity/LivingEntity;jumpFromGround()V",
@@ -78,10 +113,12 @@ public abstract class JumpTiltMixin implements DeckFlightAccess {
 
         if (this.getJumpPower() <= 1.0E-5F) return;
 
-        if (!aero$hasMovementInput(self)) {
-            self.setDeltaMovement(Vec3.ZERO);
-        } else {
-            aero$dropLaunchResidue(self);
+        if (!Boots.holding(self)) {
+            if (!aero$hasMovementInput(self)) {
+                self.setDeltaMovement(Vec3.ZERO);
+            } else {
+                aero$dropLaunchResidue(self);
+            }
         }
 
         aero$deckJump = true;
@@ -118,11 +155,29 @@ public abstract class JumpTiltMixin implements DeckFlightAccess {
         aero$posIntoMove = self.position();
     }
 
+    @ModifyReturnValue(method = "handleRelativeFrictionAndCalculateMovement", at = @At("RETURN"))
+    private Vec3 aero$holdAgainstFace(Vec3 moved) {
+        LivingEntity self = (LivingEntity) (Object) this;
+
+        if (!self.onGround() || self.onClimbable()) return moved;
+        if (!Boots.holding(self)) return moved;
+
+        Vector3d up = Boots.support(self, new Vector3d());
+        if (up == null) return moved;
+
+        double into = up.x * moved.x + up.y * moved.y + up.z * moved.z;
+        if (into >= 0.0) return moved;
+
+        return moved.subtract(up.x * into, up.y * into, up.z * into);
+    }
+
     @Inject(method = "travel", at = @At("TAIL"))
     private void aero$deckGravity(Vec3 travelVector, CallbackInfo ci) {
         LivingEntity self = (LivingEntity) (Object) this;
 
-        aero$undoStandingPushStep(self);
+        boolean booted = Boots.holding(self);
+
+        if (!booted) aero$undoStandingPushStep(self);
 
         boolean caught = com.mlh.aero_player_tilt.tilt.DeckStick.keepFooting(
                 self, aero$groundedBeforeTravel, aero$deckJump);
@@ -130,7 +185,11 @@ public abstract class JumpTiltMixin implements DeckFlightAccess {
         boolean onGround = caught || self.onGround();
 
         Vector3d correction = null;
-        if (onGround) {
+        if (booted) {
+            aero$deckJump = false;
+            aero$deckJumpTicks = 0;
+            correction = aero$applyDeckGravity(self);
+        } else if (onGround) {
             aero$deckJump = false;
             aero$deckJumpTicks = 0;
         } else if (aero$deckJump && ++aero$deckJumpTicks > AERO$MAX_DECK_JUMP_TICKS) {
@@ -184,6 +243,8 @@ public abstract class JumpTiltMixin implements DeckFlightAccess {
 
     @Unique
     private boolean aero$deckGravityArmed(LivingEntity self) {
+        if (Boots.holding(self)) return true;
+
         if (com.mlh.aero_player_tilt.tilt.TiltPolicy.deckGravity() == DeckGravity.WORLD) return false;
 
         if (aero$deckJump) return true;
@@ -214,7 +275,11 @@ public abstract class JumpTiltMixin implements DeckFlightAccess {
                 : AERO$AIR_DRAG;
         if (horizontalDrag < 1.0e-4) return null;
 
-        Vector3d up = tilt.transform(new Vector3d(0.0, 1.0, 0.0));
+        boolean booted = Boots.holding(self);
+
+        Vector3d up = booted ? Boots.support(self, new Vector3d()) : null;
+        if (up == null) up = tilt.transform(new Vector3d(0.0, 1.0, 0.0));
+
         Vec3 velocity = self.getDeltaMovement();
 
         Vector3d beforeDrag = new Vector3d(
@@ -222,7 +287,7 @@ public abstract class JumpTiltMixin implements DeckFlightAccess {
                 velocity.y / AERO$VERTICAL_DRAG + gravity,
                 velocity.z / horizontalDrag);
 
-        aero$restoreClippedStep(self, beforeDrag);
+        if (!booted) aero$restoreClippedStep(self, beforeDrag);
 
         double anisotropy = AERO$VERTICAL_DRAG - horizontalDrag;
         Vector3d correction = new Vector3d(up).mul(anisotropy * up.dot(beforeDrag));
@@ -231,7 +296,14 @@ public abstract class JumpTiltMixin implements DeckFlightAccess {
         double damped = AERO$VERTICAL_DRAG * gravity;
         correction.add(-damped * up.x, damped * (1.0 - up.y), -damped * up.z);
 
-        aero$dropStandingResidue(correction, up, horizontalDrag, gravity);
+        if (booted) {
+            if (self.onGround()) {
+                double extra = (Boots.pull() - 1.0) * damped;
+                if (extra != 0.0) correction.fma(-extra, up);
+            }
+        } else {
+            aero$dropStandingResidue(correction, up, horizontalDrag, gravity);
+        }
 
         self.addDeltaMovement(new Vec3(correction.x, correction.y, correction.z));
         return correction;

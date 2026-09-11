@@ -47,6 +47,9 @@ public final class SubLevelTracker {
         LocalPlayer self = net.minecraft.client.Minecraft.getInstance().player;
         if (self == null || self != entity) return null;
 
+        ClientSubLevel booted = com.mlh.aero_player_tilt.client.tilt.BootsController.standing();
+        if (booted != null) return booted;
+
         ClientSubLevel standing = StandingDeck.current();
         if (standing != null) return standing;
 

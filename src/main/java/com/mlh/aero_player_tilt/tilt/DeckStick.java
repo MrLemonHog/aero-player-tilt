@@ -36,7 +36,8 @@ public final class DeckStick {
         Quaterniond tilt = PlayerTilt.getRenderOrientation(entity, 1.0f);
         if (tilt == null) return false;
 
-        Vector3d up = tilt.transform(new Vector3d(0.0, 1.0, 0.0)).normalize();
+        Vector3d up = Boots.holding(entity) ? Boots.support(entity, new Vector3d()) : null;
+        if (up == null) up = tilt.transform(new Vector3d(0.0, 1.0, 0.0)).normalize();
 
         Vec3 motion = entity.getDeltaMovement();
         double climbing = motion.x * up.x + motion.y * up.y + motion.z * up.z;
@@ -62,7 +63,11 @@ public final class DeckStick {
                 hit.getDirection().getStepX(), hit.getDirection().getStepY(), hit.getDirection().getStepZ());
         if (space != null) space.logicalPose().orientation().transform(normal);
 
-        if (normal.y < PlayerTilt.walkableNormalY()) return false;
+        if (Boots.holding(entity)) {
+            if (normal.normalize().dot(up) < 0.5) return false;
+        } else if (normal.y < PlayerTilt.floorNormalY()) {
+            return false;
+        }
 
         entity.setOnGround(true);
         entity.resetFallDistance();

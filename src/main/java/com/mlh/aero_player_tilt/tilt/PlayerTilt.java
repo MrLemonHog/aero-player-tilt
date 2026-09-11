@@ -30,6 +30,16 @@ public final class PlayerTilt {
         return TiltPolicy.minNormalY();
     }
 
+    public static boolean anyFace() {
+        return walkableNormalY() <= 0.0;
+    }
+
+    public static double floorNormalY() {
+        return Math.max(UPRIGHT_EPSILON, walkableNormalY());
+    }
+
+    private static final double UPRIGHT_EPSILON = 1.0e-4;
+
     public static boolean scaled() {
         return tiltMultiplier() < 1.0;
     }

@@ -42,6 +42,7 @@ public class SideManager {
 
         Quaternionf body = new Quaternionf();
         boolean bodyActive = false;
+        boolean boots = false;
         Quaterniond deckStamp = null;
         java.util.UUID deckStampId = null;
 
@@ -53,9 +54,11 @@ public class SideManager {
                     ? snapshot
                     : new Quaterniond(BodyTiltController.getRawTilt());
 
-            PlayerTilt.leanPartially(world);
+            boots = com.mlh.aero_player_tilt.client.tilt.BootsController.attached();
 
-            bodyActive = PlayerTilt.isMeaningful((float) world.w());
+            if (!boots) PlayerTilt.leanPartially(world);
+
+            bodyActive = boots || PlayerTilt.isMeaningful((float) world.w());
 
             body.set((float) world.x(), (float) world.y(), (float) world.z(), (float) world.w());
 
@@ -63,6 +66,7 @@ public class SideManager {
             if (deckStampId != null) deckStamp = ClientPlayerTilt.currentDeck();
         }
         if (!bodyActive) {
+            boots = false;
             body.identity();
             deckStamp = null;
             deckStampId = null;
@@ -74,7 +78,7 @@ public class SideManager {
                 ServerPlayer sp = server.getPlayerList().getPlayer(mc.player.getUUID());
                 if (sp != null) {
                     if (bodyActive) {
-                        ServerTiltStore.set(sp.getUUID(), body, true,
+                        ServerTiltStore.set(sp.getUUID(), body, true, boots,
                                 sp.level().getGameTime(),
                                 deckStamp, deckStampId);
                     } else {
@@ -89,7 +93,7 @@ public class SideManager {
         if (mc.getConnection() == null) return;
 
         PacketDistributor.sendToServer(
-                TiltSyncPayload.from(body, bodyActive, deckStampId, deckStamp));
+                TiltSyncPayload.from(body, bodyActive, boots, deckStampId, deckStamp));
     }
 
     public static void beginSession() {

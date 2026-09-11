@@ -107,7 +107,7 @@ public final class SurfaceRaycaster {
                 normal = MathUtils.transformToWorldSpace(normal, drawn);
             }
 
-            if (normal.y < (float) com.mlh.aero_player_tilt.tilt.PlayerTilt.walkableNormalY()) {
+            if (normal.y < (float) com.mlh.aero_player_tilt.tilt.PlayerTilt.floorNormalY()) {
                 DebugRayRenderer.submitRay(from, to, 0.5f, 0.5f, 0.5f);
                 continue;
             }

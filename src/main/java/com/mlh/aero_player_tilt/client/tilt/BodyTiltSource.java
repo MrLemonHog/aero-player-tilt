@@ -66,9 +66,13 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
             return null;
         }
 
-        Quaternionf lean = levelOff(MathUtils.toQuaternionf(body));
+        boolean booted = com.mlh.aero_player_tilt.tilt.Boots.holding(context.player());
 
-        boolean rotates = rotatesCamera();
+        Quaternionf lean = booted
+                ? MathUtils.toQuaternionf(body)
+                : levelOff(MathUtils.toQuaternionf(body));
+
+        boolean rotates = booted || rotatesCamera();
         Quaternionf look = rotates ? new Quaternionf(lean) : new Quaternionf();
 
         if (!claiming) {

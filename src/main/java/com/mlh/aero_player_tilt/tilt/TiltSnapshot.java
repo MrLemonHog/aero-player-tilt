@@ -16,6 +16,9 @@ public final class TiltSnapshot {
     @Nullable private UUID prevDeckId;
     @Nullable private UUID curDeckId;
 
+    private boolean prevBoots;
+    private boolean curBoots;
+
     private boolean active;
 
     private long lastUpdate;
@@ -24,18 +27,21 @@ public final class TiltSnapshot {
         this.prev.set(this.cur);
         this.prevDeck.set(this.curDeck);
         this.prevDeckId = this.curDeckId;
+        this.prevBoots = this.curBoots;
     }
 
     public void set(Quaterniondc value, boolean active, long gameTime) {
-        set(value, null, null, active, gameTime);
+        set(value, null, null, active, false, gameTime);
     }
 
     public void set(Quaterniondc value,
                     @Nullable Quaterniondc deck,
                     @Nullable UUID deckId,
                     boolean active,
+                    boolean boots,
                     long gameTime) {
         this.cur.set(value);
+        this.curBoots = boots;
 
         if (deck != null && deckId != null) {
             this.curDeck.set(deck);
@@ -59,20 +65,21 @@ public final class TiltSnapshot {
         if (!active) return null;
 
         if (partialTicks >= 1.0f) {
-            return carry(cur, curDeck, curDeckId, deckNow, deckNowId, new Quaterniond());
+            return carry(cur, curDeck, curDeckId, curBoots, deckNow, deckNowId, new Quaterniond());
         }
         if (partialTicks <= 0.0f) {
-            return carry(prev, prevDeck, prevDeckId, deckNow, deckNowId, new Quaterniond());
+            return carry(prev, prevDeck, prevDeckId, prevBoots, deckNow, deckNowId, new Quaterniond());
         }
 
-        Quaterniond from = carry(prev, prevDeck, prevDeckId, deckNow, deckNowId, new Quaterniond());
-        Quaterniond to = carry(cur, curDeck, curDeckId, deckNow, deckNowId, new Quaterniond());
+        Quaterniond from = carry(prev, prevDeck, prevDeckId, prevBoots, deckNow, deckNowId, new Quaterniond());
+        Quaterniond to = carry(cur, curDeck, curDeckId, curBoots, deckNow, deckNowId, new Quaterniond());
         return from.slerp(to, partialTicks);
     }
 
     private static Quaterniond carry(Quaterniondc value,
                                      Quaterniondc deckStamp,
                                      @Nullable UUID stampId,
+                                     boolean boots,
                                      @Nullable Quaterniondc deckNow,
                                      @Nullable UUID deckNowId,
                                      Quaterniond dest) {
@@ -81,6 +88,8 @@ public final class TiltSnapshot {
         }
 
         dest.set(deckStamp).conjugate().premul(deckNow).mul(value).normalize();
+
+        if (boots) return dest;
 
         PlayerTilt.dropTwist(dest);
 
@@ -102,6 +111,10 @@ public final class TiltSnapshot {
 
     public boolean isActive() {
         return active;
+    }
+
+    public boolean isBooted() {
+        return curBoots;
     }
 
     public long lastUpdate() {
