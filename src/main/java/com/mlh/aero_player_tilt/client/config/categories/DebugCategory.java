@@ -19,21 +19,24 @@ public class DebugCategory {
                 Config.DEBUG_MESSAGES));
 
         debug.add(new ToggleButtonEntry(
-                "aero_player_tilt.configuration.tiltSyncPanel",
-                "aero_player_tilt.configuration.tiltSyncPanel.tooltip",
-                Config.DEBUG_TILT_SYNC));
-
-        debug.add(new ToggleButtonEntry(
                 "aero_player_tilt.configuration.frameTrace",
                 "aero_player_tilt.configuration.frameTrace.tooltip",
-                Config.DEBUG_FRAME_TRACE));
+                Config.DEBUG_FRAME_TRACE)
+                .withVisibleWhen(() -> Config.DEBUG_MESSAGES.get()));
 
         debug.add(new SliderEntry(
                 "aero_player_tilt.configuration.frameTraceJump",
                 "aero_player_tilt.configuration.frameTraceJump.tooltip",
                 Config.DEBUG_FRAME_TRACE_JUMP,
                 0.05, 5.0, 0.05,
-                0.05, 45.0));
+                0.05, 45.0)
+                .withVisibleWhen(() -> Config.DEBUG_MESSAGES.get()
+                        && Config.DEBUG_FRAME_TRACE.get()));
+
+        debug.add(new ToggleButtonEntry(
+                "aero_player_tilt.configuration.tiltSyncPanel",
+                "aero_player_tilt.configuration.tiltSyncPanel.tooltip",
+                Config.DEBUG_TILT_SYNC));
 
         return debug;
     }

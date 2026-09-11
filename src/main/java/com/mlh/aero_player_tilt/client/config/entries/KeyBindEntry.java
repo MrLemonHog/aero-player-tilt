@@ -121,6 +121,8 @@ public class KeyBindEntry extends ConfigOptionList.Entry {
     @Override
     public void render(GuiGraphics gfx, int index, int top, int left, int width, int height,
                        int mouseX, int mouseY, boolean hovered, float delta) {
+        if (!visible()) return;
+
         drawLabel(gfx, left, top, mouseX, mouseY);
 
         int btnX = left + width - BTN_W - 4;

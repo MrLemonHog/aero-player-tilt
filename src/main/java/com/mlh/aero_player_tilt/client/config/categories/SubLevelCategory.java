@@ -24,21 +24,24 @@ public class SubLevelCategory {
                 "aero_player_tilt.configuration.footingGrip.tooltip",
                 Config.FOOTING_GRIP,
                 0.05, 2.0, 0.05,
-                0.05, 4.0));
+                0.05, 4.0)
+                .withVisibleWhen(() -> Config.BLEND_FOOTING.get()));
 
         cat.add(new SliderEntry(
                 "aero_player_tilt.configuration.footingMargin",
                 "aero_player_tilt.configuration.footingMargin.tooltip",
                 Config.FOOTING_MARGIN,
                 0.0, 0.9, 0.05,
-                0.0, 0.9));
+                0.0, 0.9)
+                .withVisibleWhen(() -> Config.BLEND_FOOTING.get()));
 
         cat.add(new SliderEntry(
                 "aero_player_tilt.configuration.footingDwellTicks",
                 "aero_player_tilt.configuration.footingDwellTicks.tooltip",
                 Config.FOOTING_DWELL_TICKS,
                 0.0, 20.0, 0.5,
-                0.0, 60.0));
+                0.0, 60.0)
+                .withVisibleWhen(() -> Config.BLEND_FOOTING.get()));
 
         cat.add(new SeparatorEntry("aero_player_tilt.configuration.sublevel.walking"));
 
@@ -80,14 +83,16 @@ public class SubLevelCategory {
                 "aero_player_tilt.configuration.zoneReach.tooltip",
                 Config.ZONE_REACH,
                 0.0, 16.0, 0.5,
-                0.0, 32.0));
+                0.0, 32.0)
+                .withVisibleWhen(() -> Config.ZONE_TILT.get() != com.mlh.aero_player_tilt.tilt.ZoneTilt.OFF));
 
         cat.add(new SliderEntry(
                 "aero_player_tilt.configuration.zoneLingerTicks",
                 "aero_player_tilt.configuration.zoneLingerTicks.tooltip",
                 Config.ZONE_LINGER_TICKS,
                 0.0, 60.0, 1.0,
-                0.0, 200.0));
+                0.0, 200.0)
+                .withVisibleWhen(() -> Config.ZONE_TILT.get() != com.mlh.aero_player_tilt.tilt.ZoneTilt.OFF));
 
         cat.add(new SeparatorEntry("aero_player_tilt.configuration.experimental.landing"));
 
@@ -101,14 +106,16 @@ public class SubLevelCategory {
                 "aero_player_tilt.configuration.predictHorizonTicks.tooltip",
                 Config.PREDICT_HORIZON_TICKS,
                 1, 100, 1,
-                1, 200));
+                1, 200)
+                .withVisibleWhen(() -> Config.PREDICT_LANDING.get()));
 
         cat.add(new SliderEntry(
                 "aero_player_tilt.configuration.landingLeadTicks",
                 "aero_player_tilt.configuration.landingLeadTicks.tooltip",
                 Config.LANDING_LEAD_TICKS,
                 0.0, 10.0, 0.5,
-                0.0, 20.0));
+                0.0, 20.0)
+                .withVisibleWhen(() -> Config.PREDICT_LANDING.get()));
 
         cat.add(new SeparatorEntry("aero_player_tilt.configuration.activation.leaving"));
 

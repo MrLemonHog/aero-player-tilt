@@ -34,6 +34,8 @@ public class SeparatorEntry extends ConfigOptionList.Entry {
     @Override
     public void render(GuiGraphics gfx, int index, int top, int left, int width, int height,
                        int mouseX, int mouseY, boolean hovered, float delta) {
+        if (!visible()) return;
+
         int lineY = top + rowHeight - 1;
 
         if (hasText) {

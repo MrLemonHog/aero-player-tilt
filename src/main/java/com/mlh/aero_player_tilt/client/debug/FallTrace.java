@@ -53,7 +53,9 @@ public final class FallTrace {
     private static final List<String> pending = new ArrayList<>();
 
     public static boolean enabled() {
-        return Config.isLoaded() && Config.flag(Config.DEBUG_FRAME_TRACE, false);
+        return Config.isLoaded()
+                && Config.flag(Config.DEBUG_MESSAGES, false)
+                && Config.flag(Config.DEBUG_FRAME_TRACE, false);
     }
 
     public static void tick(LocalPlayer player) {

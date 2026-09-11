@@ -32,7 +32,9 @@ public class GeneralCategory {
                 "aero_player_tilt.configuration.gripSlopes.tooltip",
                 Config.GRIP_SLOPES)
                 .withNotice("aero_player_tilt.configuration.gripSlopes.boots",
-                        () -> Config.MAGNETIC_BOOTS.get()));
+                        () -> Config.MAGNETIC_BOOTS.get())
+                .withVisibleWhen(
+                        () -> com.mlh.aero_player_tilt.tilt.TiltPolicy.minNormalY() < 0.8));
 
         addDeckGravity(general);
 

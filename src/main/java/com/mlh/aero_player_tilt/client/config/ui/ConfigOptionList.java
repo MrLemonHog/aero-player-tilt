@@ -92,9 +92,20 @@ public class ConfigOptionList extends ContainerObjectSelectionList<ConfigOptionL
         @Nullable private String noticeKey;
         @Nullable private BooleanSupplier noticeWhen;
 
+        @Nullable private BooleanSupplier visibleWhen;
+
         protected Entry(String labelKey, String tooltipKey) {
             this.labelKey   = labelKey;
             this.tooltipKey = tooltipKey;
+        }
+
+        public Entry withVisibleWhen(BooleanSupplier when) {
+            this.visibleWhen = when;
+            return this;
+        }
+
+        public boolean visible() {
+            return visibleWhen == null || visibleWhen.getAsBoolean();
         }
 
         public Entry withNotice(String noticeKey, BooleanSupplier when) {
@@ -144,6 +155,6 @@ public class ConfigOptionList extends ContainerObjectSelectionList<ConfigOptionL
             gfx.fill(cx, y + 9, cx + 1, y + 10, 0xFF000000);
         }
 
-        public int getItemHeight() { return ENTRY_H; }
+        public int getItemHeight() { return visible() ? ENTRY_H : 0; }
     }
 }
