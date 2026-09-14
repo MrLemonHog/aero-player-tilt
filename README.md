@@ -1,25 +1,37 @@
-# Aeronautics Player Tilt
+![Description](https://github.com/MrLemonHog/archive/blob/main/img/apt/description-aptv2.png?raw=true)
+<img src="https://cdn.modrinth.com/data/R8r1wiW4/images/bace61aa0d1dab03a797f447a166a47b0a15d07e.webp" width="100%" alt="preview">
 
-Your body and hitbox tilt with the moving [Create Aeronautics](https://modrinth.com/mod/create-aeronautics) contraption you're standing on
+### Your body and hitbox tilt with the [Create Aeronautics](https://modrinth.com/mod/create-aeronautics) ship you're standing on
 
-## Preview
+Aeronautics Player Tilt is an add-on for [Aeronautics Camera Sync](https://modrinth.com/mod/aero_cam_sync). ACS tilts your camera with the deck, but you still stand upright on it. People kept asking for the body to tilt too - so here it is.
 
-![body tilt](https://cdn.modrinth.com/data/R8r1wiW4/images/bace61aa0d1dab03a797f447a166a47b0a15d07e.webp)
+<br>
 
-## What this mod do?
+![What this mod do?](https://github.com/MrLemonHog/archive/blob/main/img/apt/wtmdv2.png?raw=true)
 
-- **Body tilt** - your player model and hitbox lean with the deck under your feet, instead of
-  standing bolt upright the way vanilla does. A tilted 1-wide gap can be walked through,
-  because the box walking into it is tilted with it.
-- **Gravity** - a jump off a leaning deck comes back down where it left, instead
-  of drifting downhill the way world gravity puts it.
-- **Mobs and dropped items**(experimental, world setting) - entities standing on a deck can lean with it.
+<br>
 
-## Requires
+![Gravity](https://github.com/MrLemonHog/archive/blob/main/img/apt/gravity.png?raw=true)
+
+## Which way you fall above a tilted ship:
+
+#### **World** - you fall toward the world's down, so over a tilted deck you drift sideways across it.
+#### **Sub-level** - you fall toward the deck's own floor, so it works like flat ground.
+
+<img src="https://github.com/MrLemonHog/archive/blob/main/img/apt/output1.webp?raw=true" width="100%" alt="gravity">
+<br>
+<br>
+
+![mobs&items](https://github.com/MrLemonHog/archive/blob/main/img/apt/mobs-items.png?raw=true)
+### Items and mobs standing on a deck tilt with it, just like you.
+
+<img src="https://github.com/MrLemonHog/archive/blob/main/img/apt/output2.webp?raw=true" width="100%" alt="mobs and items">
+
+#### **Keybind:** <kbd>O</kbd> toggles body tilt on/off (rebindable in the config screen or in controls menu).
+
+<br>
+
+![Requires](https://github.com/MrLemonHog/archive/blob/main/img/apt/requiresv3.png?raw=true)
 
 - [Sable](https://modrinth.com/mod/sable)
 - [Aeronautics Camera Sync](https://modrinth.com/mod/aero_cam_sync) 1.4.0+
-
-## Keybind
-
-<kbd>O</kbd> toggles body tilt on/off (rebindable in the config screen or in controls menu).
