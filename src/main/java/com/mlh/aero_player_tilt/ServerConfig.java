@@ -21,5 +21,11 @@ public final class ServerConfig {
     public static final ModConfigSpec.DoubleValue MIN_NORMAL_Y =
             BUILDER.defineInRange("maxTilt", 0.8, 0.0, 1.0);
 
+    public static final ModConfigSpec.BooleanValue ALLOW_MAGNETIC_BOOTS =
+            BUILDER.define("allowMagneticBoots", true);
+
+    public static final ModConfigSpec.BooleanValue ALLOW_STICKY_TILT =
+            BUILDER.define("allowStickyTilt", true);
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 }

@@ -111,11 +111,11 @@ public final class BootsController {
     public static boolean enabled() {
         if (!Config.isLoaded()) return false;
 
-        return Config.flag(Config.MAGNETIC_BOOTS, false) || Config.flag(Config.GRIP_SLOPES, false);
+        return flips() || (Config.flag(Config.GRIP_SLOPES, false) && TiltPolicy.allowsStickyTilt());
     }
 
     public static boolean flips() {
-        return Config.flag(Config.MAGNETIC_BOOTS, false);
+        return Config.flag(Config.MAGNETIC_BOOTS, false) && TiltPolicy.allowsMagneticBoots();
     }
 
     public static void tick(LocalPlayer player) {

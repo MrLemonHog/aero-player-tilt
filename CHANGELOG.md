@@ -1,4 +1,19 @@
 # Changelog
+## 0.2.0
+
+### Added
+- Magnetic boots [Beta]: any face becomes your floor, walls and ceilings included. Jump again in the air to let go.
+- Sticky tilt: stops you sliding off a tilted deck.
+- Rotate Camera: turn it off to keep the camera level while your body still tilts.
+- Server config: `allowMagneticBoots` and `allowStickyTilt` turn these features off for every player.
+
+### Changed
+- Max Tilt Threshold gains an infinity stop.
+- Settings under a switch that is off are now hidden.
+- Settings turned off by the server are locked in the menu.
+- The "World rules" settings tab is now called "Experimental".
+- Config file comments have been rewritten.
+
 ## 0.1.3
 
 ### Fixed

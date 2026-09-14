@@ -27,12 +27,17 @@ public class GeneralCategory {
 
         addMaxTilt(general);
 
+        // TODO: переделать Sticky tilt из вкл/выкл в настройку по градусам
+        boolean stickyOff = !com.mlh.aero_player_tilt.tilt.TiltPolicy.allowsStickyTilt();
+
         general.add(new ToggleButtonEntry(
                 "aero_player_tilt.configuration.gripSlopes",
                 "aero_player_tilt.configuration.gripSlopes.tooltip",
-                Config.GRIP_SLOPES)
-                .withNotice("aero_player_tilt.configuration.gripSlopes.boots",
-                        () -> Config.MAGNETIC_BOOTS.get())
+                Config.GRIP_SLOPES, stickyOff)
+                .withNotice(stickyOff
+                                ? "aero_player_tilt.configuration.serverOff"
+                                : "aero_player_tilt.configuration.gripSlopes.boots",
+                        () -> stickyOff || bootsOn())
                 .withVisibleWhen(
                         () -> com.mlh.aero_player_tilt.tilt.TiltPolicy.minNormalY() < 0.8));
 
@@ -106,7 +111,13 @@ public class GeneralCategory {
                 })
                 .withNotice("aero_player_tilt.configuration.minNormalY.grip",
                         () -> com.mlh.aero_player_tilt.tilt.TiltPolicy.minNormalY() < 0.8
+                                && com.mlh.aero_player_tilt.tilt.TiltPolicy.allowsStickyTilt()
                                 && !Config.GRIP_SLOPES.get()
-                                && !Config.MAGNETIC_BOOTS.get()));
+                                && !bootsOn()));
+    }
+
+    private static boolean bootsOn() {
+        return Config.MAGNETIC_BOOTS.get()
+                && com.mlh.aero_player_tilt.tilt.TiltPolicy.allowsMagneticBoots();
     }
 }

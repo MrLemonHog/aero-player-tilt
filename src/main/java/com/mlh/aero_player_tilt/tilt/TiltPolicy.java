@@ -32,6 +32,14 @@ public final class TiltPolicy {
         return serverRules() ? ServerConfig.DECK_GRAVITY.get() : Config.deckGravity();
     }
 
+    public static boolean allowsMagneticBoots() {
+        return !serverRules() || ServerConfig.ALLOW_MAGNETIC_BOOTS.get();
+    }
+
+    public static boolean allowsStickyTilt() {
+        return !serverRules() || ServerConfig.ALLOW_STICKY_TILT.get();
+    }
+
     public static boolean playerTilt() {
         return Config.flag(Config.PLAYER_TILT, true);
     }

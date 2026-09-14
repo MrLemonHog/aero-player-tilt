@@ -13,6 +13,7 @@ public final class Boots {
 
     public static boolean holding(@Nullable Entity entity) {
         if (!(entity instanceof Player player)) return false;
+        if (!TiltPolicy.allowsMagneticBoots() && !TiltPolicy.allowsStickyTilt()) return false;
 
         if (player.level().isClientSide) {
             return com.mlh.aero_player_tilt.client.tilt.ClientPlayerTilt.isBooted(player);
