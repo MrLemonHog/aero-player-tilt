@@ -4,6 +4,7 @@ import com.mlh.aero_player_tilt.client.config.Config;
 import com.mlh.aero_player_tilt.tilt.PlayerTilt;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
+import org.joml.Quaterniond;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -73,11 +74,38 @@ public final class BodyTiltController {
     }
 
     public static void bootsReleased() {
+        payTwistIntoYaw(Minecraft.getInstance().player);
+
         releasing = true;
         holdTicks = 0f;
         wasPredicting = false;
         hasLastShipRotation = false;
         lastShipId = null;
+    }
+
+    private static void payTwistIntoYaw(@javax.annotation.Nullable Player player) {
+        if (player == null) return;
+
+        Quaterniond steady = com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.steadyTilt(
+                new Quaterniond(bodyTilt));
+
+        double length = Math.sqrt(steady.y * steady.y + steady.w * steady.w);
+        if (!(length > 1.0e-6)) return;
+
+        Quaterniond twist = new Quaterniond(0.0, steady.y / length, 0.0, steady.w / length);
+        if (twist.w < 0.0) twist.set(0.0, -twist.y, 0.0, -twist.w);
+
+        float degrees = (float) Math.toDegrees(2.0 * Math.atan2(twist.y, twist.w));
+        if (!Float.isFinite(degrees) || degrees == 0f) return;
+
+        bodyTilt.mul(new Quaternionf(twist).conjugate()).normalize();
+
+        player.yBodyRot -= degrees;
+        player.yBodyRotO -= degrees;
+        player.yHeadRot -= degrees;
+        player.yHeadRotO -= degrees;
+        player.setYRot(player.getYRot() - degrees);
+        player.yRotO -= degrees;
     }
 
     public static void updateBodyTilt(@javax.annotation.Nullable Vector3f surfaceNormal,
