@@ -108,10 +108,6 @@ public final class ClientPlayerTilt {
     }
 
     private static Quaterniond drawnOrientation(SubLevel deck, float partialTicks) {
-        if (deck instanceof dev.ryanhcode.sable.sublevel.ClientSubLevel client) {
-            return new Quaterniond(client.renderPose(partialTicks).orientation());
-        }
-
         return DeckFrame.orientationAt(deck, partialTicks, new Quaterniond());
     }
 
@@ -145,7 +141,15 @@ public final class ClientPlayerTilt {
     private static boolean localActive() {
         if (!localAllowed()) return false;
 
-        return BootsController.attached() || PlayerTilt.isMeaningful(BodyTiltController.getRawTiltW());
+        return BootsController.attached()
+                || leaning(new Quaterniond(BodyTiltController.getRawTilt()));
+    }
+
+    public static boolean leaning(Quaterniond raw) {
+        return com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.rocking()
+                || PlayerTilt.isMeaningful(raw.w)
+                || PlayerTilt.isMeaningful(
+                        com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.steadyLean(new Quaterniond(raw)).w);
     }
 
     private static boolean localAllowed() {
@@ -176,7 +180,7 @@ public final class ClientPlayerTilt {
         LOCAL.set(new Quaterniond(tilt),
                 carrier != null ? new Quaterniond(carrier) : null,
                 BodyTiltController.getCarrierId(),
-                boots || PlayerTilt.isMeaningful(tilt.w()), boots, gameTime);
+                boots || leaning(new Quaterniond(tilt)), boots, gameTime);
     }
 
     public static boolean isBooted(Player player) {
@@ -216,11 +220,13 @@ public final class ClientPlayerTilt {
     private static Quaterniond local(Player player, float partialTicks) {
         if (!localAllowed()) return null;
 
-        Quaterniond tilt = new Quaterniond(BodyTiltController.getRawTilt());
+        Quaterniond raw = new Quaterniond(BodyTiltController.getRawTilt());
 
-        if (BootsController.attached()) return tilt;
+        if (BootsController.attached()) {
+            return com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.steadyTilt(raw);
+        }
 
-        return PlayerTilt.leanPartially(tilt);
+        return PlayerTilt.leanPartially(com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.steadyLean(raw));
     }
 
     public static void accept(int entityId, Quaternionf tilt, Quaternionf worldTilt,
@@ -229,7 +235,7 @@ public final class ClientPlayerTilt {
         if (mc.level == null) return;
 
         if (mc.player != null && mc.player.getId() == entityId
-                && !com.mlh.aero_player_tilt.client.utils.ReplayCompat.inReplay()) {
+                && !com.mlh.aero_player_tilt.client.compat.ReplayCompat.inReplay()) {
             return;
         }
 

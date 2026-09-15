@@ -1,6 +1,6 @@
 package com.mlh.aero_player_tilt.client.tilt;
 
-import com.mlh.aero_player_tilt.client.utils.ReplayCompat;
+import com.mlh.aero_player_tilt.client.compat.ReplayCompat;
 import com.mlh.aero_player_tilt.tilt.DeckFrame;
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.companion.math.Pose3d;

@@ -55,7 +55,8 @@ public final class DeckTurn {
             return;
         }
 
-        Quaterniondc current = deck.renderPose().orientation();
+        Quaterniondc current = com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.steady(deck,
+                net.minecraft.client.Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(true));
 
         if (lastDeck == null || !lastDeck.equals(deck.getUniqueId())) {
             LAST.set(current);

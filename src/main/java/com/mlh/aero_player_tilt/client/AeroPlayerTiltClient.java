@@ -61,7 +61,7 @@ public class AeroPlayerTiltClient {
         AcsBridge.ACS.addTiltSource(BodyTiltSource.PRIORITY, camera);
         AcsBridge.ACS.addConditions(camera);
 
-        com.mlh.aero_player_tilt.client.utils.FirstPersonCompat.install();
+        com.mlh.aero_player_tilt.client.compat.FirstPersonCompat.install();
 
         AeroPlayerTilt.LOGGER.info("{} Initialized!", MODID);
     }

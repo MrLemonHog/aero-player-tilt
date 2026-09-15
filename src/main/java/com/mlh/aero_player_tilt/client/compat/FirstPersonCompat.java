@@ -1,4 +1,4 @@
-package com.mlh.aero_player_tilt.client.utils;
+package com.mlh.aero_player_tilt.client.compat;
 
 import com.mlh.aero_player_tilt.AcsBridge;
 import com.mlh.aero_player_tilt.AeroPlayerTilt;
@@ -111,7 +111,8 @@ public final class FirstPersonCompat {
 
     @Nullable
     private static Quaterniond drawnByThisMod(Entity entity, float partialTick) {
-        Quaterniond ours = PlayerTilt.getRenderOrientation(entity, partialTick);
+        Quaterniond ours = PhysicsModCompat.apply(entity, partialTick,
+                PlayerTilt.getRenderOrientation(entity, partialTick));
         return ours != null && PlayerTilt.isMeaningful(ours.w) ? ours : null;
     }
 

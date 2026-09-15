@@ -35,7 +35,7 @@ public final class BodyTiltController {
     public static boolean shouldComputeTilt(Player player) {
         if (player == null) return false;
         if (!Config.isLoaded() || !Config.MOD_ENABLED.get()) return false;
-        if (com.mlh.aero_player_tilt.client.utils.ReplayCompat.inReplay()) return false;
+        if (com.mlh.aero_player_tilt.client.compat.ReplayCompat.inReplay()) return false;
         if (!com.mlh.aero_player_tilt.SideManager.isClientServer()) return false;
         return player.getVehicle() == null;
     }
@@ -163,7 +163,10 @@ public final class BodyTiltController {
 
         settleClamp();
 
-        if (!PlayerTilt.isMeaningful(target.w())) settleUpright();
+        if (!PlayerTilt.isMeaningful(target.w())
+                && !com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.rocking()) {
+            settleUpright();
+        }
     }
 
     private static void settleClamp() {

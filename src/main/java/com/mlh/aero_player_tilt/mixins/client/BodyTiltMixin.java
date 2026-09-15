@@ -50,6 +50,7 @@ public abstract class BodyTiltMixin {
             StandingDeck.forget();
             com.mlh.aero_player_tilt.client.utils.DeckZone.forget();
             com.mlh.aero_player_tilt.client.tilt.BootsController.release();
+            com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.release();
             return;
         }
 
@@ -107,10 +108,12 @@ public abstract class BodyTiltMixin {
         Quaternionf shipRotation = deck != null
                 ? new Quaternionf(deck.renderPose(partialTick).orientation())
                 : null;
+        com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.hold(deck, partialTick);
 
         com.mlh.aero_player_tilt.client.tilt.TiltPrediction.Landing landing = suppressed
                 ? null
-                : com.mlh.aero_player_tilt.client.tilt.TiltPrediction.predict(mc.player);
+                : com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.drawnLanding(
+                        com.mlh.aero_player_tilt.client.tilt.TiltPrediction.predict(mc.player));
 
         boolean airborneOverDeck = !suppressed
                 && Config.flag(Config.PREDICT_LANDING, true)

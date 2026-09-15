@@ -38,7 +38,7 @@ public class SideManager {
     public static void sendTiltToServer() {
         Minecraft mc = Minecraft.getInstance();
 
-        if (com.mlh.aero_player_tilt.client.utils.ReplayCompat.inReplay()) return;
+        if (com.mlh.aero_player_tilt.client.compat.ReplayCompat.inReplay()) return;
 
         Quaternionf body = new Quaternionf();
         boolean bodyActive = false;
@@ -58,7 +58,7 @@ public class SideManager {
 
             if (!boots) PlayerTilt.leanPartially(world);
 
-            bodyActive = boots || PlayerTilt.isMeaningful((float) world.w());
+            bodyActive = boots || ClientPlayerTilt.leaning(world);
 
             body.set((float) world.x(), (float) world.y(), (float) world.z(), (float) world.w());
 

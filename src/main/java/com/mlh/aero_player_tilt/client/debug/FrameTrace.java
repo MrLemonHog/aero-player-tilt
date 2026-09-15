@@ -183,7 +183,7 @@ public final class FrameTrace {
                         + " | body int=%s raw=%s snap=%s>%s"
                         + " | floor tgt=%s hits=%d share=%.2f hold=%d ht=%.1f air=%d land=%s"
                         + " | boots %s"
-                        + " | deck trk=%s std=%s foot=%s"
+                        + " | deck trk=%s std=%s foot=%s sway=%s"
                         + " | plr g=%d y=%.4f dy=%s dmy=%s",
                 frame,
                 mc.level.getGameTime(), partialTick, deltaTicks,
@@ -207,6 +207,7 @@ public final class FrameTrace {
                 com.mlh.aero_player_tilt.client.tilt.BootsController.trace(),
                 measured ? shortId(trackedDeck) : "?", measured ? shortId(standingDeck) : "?",
                 StandingDeck.debug().replace(' ', '_'),
+                com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.debug(player),
                 player.onGround() ? 1 : 0, player.getY(),
                 fmt(player.getY() - lastY), fmt(motion.y));
         } catch (RuntimeException broken) {

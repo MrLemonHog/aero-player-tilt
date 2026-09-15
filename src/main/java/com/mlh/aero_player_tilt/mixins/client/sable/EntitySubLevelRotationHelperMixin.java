@@ -37,4 +37,19 @@ public class EntitySubLevelRotationHelperMixin {
 
         cir.setReturnValue(null);
     }
+
+    @Inject(method = "getEntityOrientation", at = @At("RETURN"), cancellable = true)
+    private static void aero$swayWithDeck(Entity cameraEntity,
+                                          Function<SubLevel, Pose3dc> poseProvider,
+                                          float partialTicks,
+                                          EntitySubLevelRotationHelper.Type type,
+                                          CallbackInfoReturnable<Quaterniond> cir) {
+        if (type != EntitySubLevelRotationHelper.Type.ENTITY) return;
+
+        Quaterniond orientation = cir.getReturnValue();
+        if (orientation == null || !PlayerTilt.isRenderTilted(cameraEntity)) return;
+
+        cir.setReturnValue(com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.apply(
+                cameraEntity, partialTicks, orientation));
+    }
 }

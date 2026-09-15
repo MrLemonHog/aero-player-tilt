@@ -3,6 +3,7 @@ package com.mlh.aero_player_tilt.client.debug;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mlh.aero_player_tilt.client.config.Config;
+import com.mlh.aero_player_tilt.client.compat.PhysicsModCompat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -48,8 +49,13 @@ public class DebugRayRenderer {
         VertexConsumer vc = buf.getBuffer(RenderType.LINES);
         Matrix4f mat = ps.last().pose();
 
+        float partialTick = mc.getTimer().getGameTimeDeltaPartialTick(true);
+
         for (DebugRay ray : pendingRays) {
-            drawLine(vc, mat, ray);
+            drawLine(vc, mat, mc.player == null ? ray : new DebugRay(
+                    PhysicsModCompat.drawn(mc.player, partialTick, ray.origin()),
+                    PhysicsModCompat.drawn(mc.player, partialTick, ray.end()),
+                    ray.r(), ray.g(), ray.b()));
         }
 
         buf.endBatch(RenderType.LINES);

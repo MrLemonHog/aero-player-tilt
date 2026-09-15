@@ -244,7 +244,7 @@ public final class TiltDiagnostics {
 
         if (++ticks % 10 != 0) return;
 
-        boolean replay = com.mlh.aero_player_tilt.client.utils.ReplayCompat.inReplay();
+        boolean replay = com.mlh.aero_player_tilt.client.compat.ReplayCompat.inReplay();
 
         AeroPlayerTilt.LOGGER.info("[tilt/remote] replay={} {}", replay, ClientPlayerTilt.debugRemote());
 

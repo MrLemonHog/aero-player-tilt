@@ -3,6 +3,7 @@ package com.mlh.aero_player_tilt.client.tilt;
 import com.mlh.aero_player_tilt.AcsBridge;
 import com.mlh.aero_player_tilt.AeroPlayerTilt;
 import com.mlh.aero_player_tilt.client.config.Config;
+import com.mlh.aero_player_tilt.client.compat.PhysicsModCompat;
 import com.mlh.aero_player_tilt.client.utils.MathUtils;
 import com.mlh.aero_player_tilt.tilt.PlayerTilt;
 import com.playsi.aero_cam_sync.api.AcsConditions;
@@ -59,7 +60,8 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
     @Override
     @Nullable
     public Quaternionf tilt(TiltContext context) {
-        Quaterniond body = PlayerTilt.getOrientation(context.player(), context.partialTick());
+        Quaterniond body = PhysicsModCompat.apply(context.player(), context.partialTick(),
+                PlayerTilt.getOrientation(context.player(), context.partialTick()));
         if (body == null) {
             claiming = false;
             saidGoodbye = false;
@@ -73,7 +75,11 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
                 : levelOff(MathUtils.toQuaternionf(body));
 
         boolean rotates = booted || rotatesCamera();
-        Quaternionf look = rotates ? new Quaternionf(lean) : new Quaternionf();
+        Quaternionf look = !rotates
+                ? new Quaternionf()
+                : (turnsWithSway(context.player(), context.partialTick())
+                        ? MathUtils.toQuaternionf(body)
+                        : new Quaternionf(lean));
 
         if (!claiming) {
             claiming = true;
@@ -102,6 +108,12 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
         return Config.flag(Config.ROTATE_CAMERA, true);
     }
 
+    public static boolean turnsWithSway(Player player, float partialTick) {
+        return !com.mlh.aero_player_tilt.tilt.Boots.holding(player)
+                && Config.flag(Config.TURN_WITH_DECK, true)
+                && PhysicsModCompat.sways(player, partialTick);
+    }
+
     @Override
     @Nullable
     public Vec3 eyeOffset(TiltContext context) {
@@ -114,13 +126,21 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
                                     Quaternionf view, float partialTick) {
         double eyeHeight = player.getEyeHeight();
 
-        Vec3 modelFeet = AcsBridge.ACS
-                .withVanillaEye(() -> Sable.HELPER.getEyePositionInterpolated(player, partialTick))
-                .subtract(0.0, eyeHeight, 0.0);
-
         Vec3 vanillaFeet = player.getPosition(partialTick);
+        Vec3 feetShift = PhysicsModCompat.drift(player, partialTick, 0.0);
+        boolean tracked = PhysicsModCompat.tracked(player);
 
-        double drift = modelFeet.distanceTo(vanillaFeet);
+        Vec3 modelFeet = tracked || feetShift == Vec3.ZERO
+                ? AcsBridge.ACS
+                        .withVanillaEye(() -> Sable.HELPER.getEyePositionInterpolated(player, partialTick))
+                        .subtract(PhysicsModCompat.lift(player, partialTick, eyeHeight))
+                : vanillaFeet.add(feetShift);
+
+        Vec3 eyeDrift = tracked
+                ? PhysicsModCompat.drift(player, partialTick, eyeHeight)
+                : new Vec3(0.0, feetShift == Vec3.ZERO ? 0.0 : PhysicsModCompat.oceanOffset(player, partialTick), 0.0);
+
+        double drift = modelFeet.distanceTo(vanillaFeet.add(feetShift));
         if (!(drift <= MAX_OFFSET)) {
             if (!warnedOffset) {
                 warnedOffset = true;
@@ -132,9 +152,9 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
         Vector3d head = lean.transform(new Vector3d(0.0, eyeHeight, 0.0));
 
         Vector3d boom = view.transform(new Vector3d(
-                vanillaCameraPos.x - vanillaFeet.x,
-                vanillaCameraPos.y - vanillaFeet.y - eyeHeight,
-                vanillaCameraPos.z - vanillaFeet.z));
+                vanillaCameraPos.x - vanillaFeet.x - eyeDrift.x,
+                vanillaCameraPos.y - vanillaFeet.y - eyeHeight - eyeDrift.y,
+                vanillaCameraPos.z - vanillaFeet.z - eyeDrift.z));
 
         return modelFeet.add(head.x + boom.x, head.y + boom.y, head.z + boom.z);
     }

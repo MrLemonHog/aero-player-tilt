@@ -413,6 +413,7 @@ public final class BootsController {
         Quaterniond shown = new Quaterniond(framePrev).slerp(frame, partialTick).normalize();
 
         Quaterniond pose = new Quaterniond(held.renderPose(partialTick).orientation());
+        com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.hold(held, partialTick);
         Quaterniond world = new Quaterniond(pose).mul(shown).normalize();
 
         note(pose, shown);
@@ -467,7 +468,8 @@ public final class BootsController {
         ClientSubLevel held = deck();
 
         if (!attached || held == null) {
-            return new Quaterniond(BodyTiltController.getRawTilt());
+            return com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.steadyTilt(
+                    new Quaterniond(BodyTiltController.getRawTilt()));
         }
 
         return new Quaterniond(held.logicalPose().orientation()).mul(frame).normalize();
@@ -570,7 +572,8 @@ public final class BootsController {
         leavingTicks = 0f;
 
         Quaterniond pose = new Quaterniond(found.logicalPose().orientation());
-        Quaterniond current = new Quaterniond(BodyTiltController.getRawTilt());
+        Quaterniond current = com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.steadyTilt(
+                new Quaterniond(BodyTiltController.getRawTilt()));
 
         frame.set(pose.conjugate().mul(current)).normalize();
         framePrev.set(frame);

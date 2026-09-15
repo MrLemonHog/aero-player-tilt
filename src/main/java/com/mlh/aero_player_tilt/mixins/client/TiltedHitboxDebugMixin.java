@@ -35,7 +35,8 @@ public class TiltedHitboxDebugMixin {
                                                      float partialTick,
                                                      float red, float green, float blue,
                                                      CallbackInfo ci) {
-        Quaterniond tilt = PlayerTilt.getRenderOrientation(entity, partialTick);
+        Quaterniond tilt = com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.apply(entity, partialTick,
+                PlayerTilt.getRenderOrientation(entity, partialTick));
         if (tilt == null) return;
 
         if (!PlayerTilt.isRenderTilted(entity) && !aeroCamSync$onDeck(entity)) return;

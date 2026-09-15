@@ -55,7 +55,8 @@ public final class TiltSyncOverlay {
         AcsState state = AcsBridge.ACS.state(player, partialTick);
         AcsClientState client = state.client();
 
-        Quaterniond body = PlayerTilt.getOrientation(player, partialTick);
+        Quaterniond body = com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.apply(player, partialTick,
+                PlayerTilt.getOrientation(player, partialTick));
         Quaternionf cam = state.posTilt();
 
         Quaterniond bodyQ = body == null ? new Quaterniond() : new Quaterniond(body);
@@ -64,6 +65,7 @@ public final class TiltSyncOverlay {
         Quaterniond leanQ = body == null
                 ? new Quaterniond()
                 : (com.mlh.aero_player_tilt.tilt.Boots.holding(player)
+                                || BodyTiltSource.turnsWithSway(player, partialTick)
                         ? new Quaterniond(body)
                         : new Quaterniond(BodyTiltSource.levelOff(MathUtils.toQuaternionf(body))));
 
@@ -94,6 +96,11 @@ public final class TiltSyncOverlay {
         y = row(gfx, right, y, "body",
                 fmt(leanAngle) + "/" + fmt(bodyAngle) + "deg  x" + fmt(multiplier), VALUE);
         y = row(gfx, right, y, "cam", fmt(camAngle) + "deg  x" + (Float.isNaN(scale) ? "?" : fmt(scale)), VALUE);
+
+        double sway = com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.heldDegrees();
+        if (sway > 0.0) {
+            y = row(gfx, right, y, "sway", fmt(sway) + "deg", LABEL);
+        }
 
         double takeOver = BodyTiltSource.takeOverDegrees();
         if (takeOver > 0.0) {

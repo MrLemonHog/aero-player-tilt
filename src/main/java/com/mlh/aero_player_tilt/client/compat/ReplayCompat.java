@@ -1,4 +1,4 @@
-package com.mlh.aero_player_tilt.client.utils;
+package com.mlh.aero_player_tilt.client.compat;
 
 import net.neoforged.fml.ModList;
 
