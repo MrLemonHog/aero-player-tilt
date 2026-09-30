@@ -111,7 +111,9 @@ public final class BootsController {
     public static boolean enabled() {
         if (!Config.isLoaded()) return false;
 
-        return flips() || (Config.flag(Config.GRIP_SLOPES, false) && TiltPolicy.allowsStickyTilt());
+        return flips() || (Config.flag(Config.GRIP_SLOPES, false)
+                && TiltPolicy.allowsStickyTilt()
+                && TiltPolicy.minNormalY() < 0.8);
     }
 
     public static boolean flips() {

@@ -1,4 +1,13 @@
 # Changelog
+## 0.2.1
+
+### Compatibility
+- added Physics Mod Pro compat
+
+### Fixed
+- fixed camera spinning on jump after walking corners with magnetic boots
+- fixed sticky tilt staying active after lowering max tilt back to 37° or below
+
 ## 0.2.0
 
 ### Added
