@@ -1,4 +1,15 @@
 # Changelog
+## 0.2.2
+
+### Compatibility
+- added Pehkui and Create: Pocket Sized compat: rays, sticky tilt, magnetic boots and the player model now follow the player size
+
+### Fixed
+- fixed crash with Create: Pocket Sized 0.20.0
+- fixed fps dropping near shrunk sub-levels
+- fixed sneaking getting stuck between blocks on scaled sub-levels
+- fixed sliding off a sub-level while sneaking with magnetic boots or sticky tilt
+
 ## 0.2.1
 
 ### Compatibility

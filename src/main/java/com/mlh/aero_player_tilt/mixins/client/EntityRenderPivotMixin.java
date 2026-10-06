@@ -6,7 +6,9 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.world.entity.Entity;
 import org.joml.Vector3d;
+import org.joml.Vector3f;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -27,7 +29,15 @@ public class EntityRenderPivotMixin {
         Vector3d correction = TiltRenderPivot.correction(entity, partialTicks, new Vector3d());
         if (correction == null) return;
 
-        poseStack.translate(correction.x, correction.y, correction.z);
+        Vector3f scaled = poseStack.last().pose().getScale(new Vector3f());
+        poseStack.translate(correction.x / aero$axis(scaled.x),
+                correction.y / aero$axis(scaled.y),
+                correction.z / aero$axis(scaled.z));
+    }
+
+    @Unique
+    private static float aero$axis(float scale) {
+        return scale > 1.0e-6f ? scale : 1.0f;
     }
 
     @Inject(method = "render",

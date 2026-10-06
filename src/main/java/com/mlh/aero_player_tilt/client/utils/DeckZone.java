@@ -27,8 +27,8 @@ public final class DeckZone {
         return mode() == ZoneTilt.ALWAYS;
     }
 
-    private static double reach() {
-        return Config.value(Config.ZONE_REACH, 2.0);
+    private static double reach(LocalPlayer player) {
+        return Config.value(Config.ZONE_REACH, 2.0) * BodyScale.of(player);
     }
 
     private static float lingerTicks() {
@@ -51,7 +51,7 @@ public final class DeckZone {
             return SurfaceRaycaster.Floor.NONE;
         }
 
-        double reach = reach();
+        double reach = reach(player);
 
         Vec3 position = player.position();
 

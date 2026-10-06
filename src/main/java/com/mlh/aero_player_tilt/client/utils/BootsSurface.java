@@ -77,11 +77,16 @@ public final class BootsSurface {
 
         Vec3 feet = player.position();
 
+        double size = BodyScale.of(player);
+        double inner = INNER_RADIUS * size;
+        double outer = OUTER_RADIUS * size;
+        double backoff = BACKOFF * size;
+
         List<Tally> tallies = new ArrayList<>(2);
 
-        cast(level, player, feet, down, reach, true, CENTRE_WEIGHT, true, tallies);
+        cast(level, player, feet, down, reach, backoff, CENTRE_WEIGHT, true, tallies);
 
-        double wrapDrop = Math.min(0.8, reach * 0.66);
+        double wrapDrop = Math.min(0.8 * size, reach * 0.66);
 
         for (int step = 0; step < STEPS; step++) {
             double angle = 2.0 * Math.PI * step / STEPS;
@@ -91,18 +96,18 @@ public final class BootsSurface {
                     right.y * Math.cos(angle) + forward.y * Math.sin(angle),
                     right.z * Math.cos(angle) + forward.z * Math.sin(angle));
 
-            cast(level, player, along(feet, side, INNER_RADIUS), down, reach, true,
+            cast(level, player, along(feet, side, inner), down, reach, backoff,
                     INNER_WEIGHT, false, tallies);
 
-            Vec3 ring = along(feet, side, OUTER_RADIUS);
+            Vec3 ring = along(feet, side, outer);
 
-            if (cast(level, player, ring, down, reach, true, OUTER_WEIGHT, false, tallies)) continue;
+            if (cast(level, player, ring, down, reach, backoff, OUTER_WEIGHT, false, tallies)) continue;
             if (!wrap) continue;
 
             Vec3 below = ring.add(down.x * wrapDrop, down.y * wrapDrop, down.z * wrapDrop);
 
-            wrap(level, player, below, new Vector3d(side).negate(), OUTER_RADIUS + WRAP_REACH,
-                    tallies);
+            wrap(level, player, below, new Vector3d(side).negate(), outer,
+                    outer + WRAP_REACH * size, tallies);
         }
 
         Tally best = pick(tallies, prefer);
@@ -112,7 +117,7 @@ public final class BootsSurface {
     }
 
     private static void wrap(Level level, LocalPlayer player, Vec3 origin, Vector3d direction,
-                             double range, List<Tally> tallies) {
+                             double outer, double range, List<Tally> tallies) {
         Vec3 to = origin.add(direction.x * range, direction.y * range, direction.z * range);
 
         BlockHitResult hit = level.clip(new ClipContext(
@@ -142,7 +147,7 @@ public final class BootsSurface {
         Vector3d landed = deck.logicalPose().transformPosition(new Vector3d(
                 hit.getLocation().x, hit.getLocation().y, hit.getLocation().z));
 
-        double along = OUTER_RADIUS - landed.distance(origin.x, origin.y, origin.z);
+        double along = outer - landed.distance(origin.x, origin.y, origin.z);
 
         Vector3d outward = deck.logicalPose().orientation().transform(new Vector3d(
                 face.getStepX(), face.getStepY(), face.getStepZ()));
@@ -160,11 +165,11 @@ public final class BootsSurface {
     }
 
     private static boolean cast(Level level, LocalPlayer player, Vec3 origin, Vector3d direction,
-                                double range, boolean backOff, double weight, boolean centre,
+                                double range, double backoff, double weight, boolean centre,
                                 List<Tally> tallies) {
         Vec3 step = new Vec3(direction.x, direction.y, direction.z);
 
-        Vec3 from = backOff ? origin.subtract(step.scale(BACKOFF)) : origin;
+        Vec3 from = origin.subtract(step.scale(backoff));
         Vec3 to = origin.add(step.scale(range));
 
         BlockHitResult hit = level.clip(new ClipContext(

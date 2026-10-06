@@ -268,18 +268,19 @@ public final class BootsController {
         missTicks = 0f;
         steepTicks = 0f;
 
-        aimAt(lean(contact, on, allowedFace));
+        aimAt(lean(contact, on, allowedFace,
+                com.mlh.aero_player_tilt.client.utils.BodyScale.of(player)));
         return true;
     }
 
     private static Vector3d lean(BootsSurface.Contact contact, Direction on,
-                                 Predicate<Direction> allowed) {
+                                 Predicate<Direction> allowed, double size) {
         if (leavingTicks > 0f) leavingTicks -= 1f;
         else leaving = null;
 
         Vector3d normal = face(on);
 
-        double start = Config.value(Config.MAGNETIC_LEAN, 0.30);
+        double start = Config.value(Config.MAGNETIC_LEAN, 0.30) * size;
         if (start <= 0.0) return normal;
 
         Vector3d pull = new Vector3d();
@@ -647,7 +648,8 @@ public final class BootsController {
 
     private static double reach(LocalPlayer player) {
         double base = Config.value(Config.MAGNETIC_REACH, 0.75);
-        return player.onGround() ? base : base + AIRBORNE_REACH;
+        double reach = player.onGround() ? base : base + AIRBORNE_REACH;
+        return reach * com.mlh.aero_player_tilt.client.utils.BodyScale.of(player);
     }
 
     private static float holdTicks(LocalPlayer player) {

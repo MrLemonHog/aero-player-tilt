@@ -65,8 +65,10 @@ public final class SurfaceRaycaster {
 
     public static Floor survey(LocalPlayer player, float partialTick, @Nullable ClientSubLevel only) {
         Level level = player.level();
-        Vec3[] origins = buildRayOrigins(player.position());
+        double size = BodyScale.of(player);
+        Vec3[] origins = buildRayOrigins(player.position(), radius() * size);
         double feetY = player.getY();
+        double up = offsetUp() * size;
 
         Vector3f sum = new Vector3f();
         double total = 0.0;
@@ -76,7 +78,7 @@ public final class SurfaceRaycaster {
         List<Tally> tallies = new ArrayList<>(2);
 
         for (Vec3 origin : origins) {
-            Vec3 from = new Vec3(origin.x, origin.y + offsetUp(),   origin.z);
+            Vec3 from = new Vec3(origin.x, origin.y + up, origin.z);
             Vec3 to   = new Vec3(origin.x, origin.y + offsetDown(), origin.z);
 
             BlockHitResult hit = level.clip(new ClipContext(
@@ -190,11 +192,10 @@ public final class SurfaceRaycaster {
                 .transformPosition(new org.joml.Vector3d(point.x, point.y, point.z)).y;
     }
 
-    private static Vec3[] buildRayOrigins(Vec3 feet) {
-        int count      = rayCount();
-        double radius  = radius();
+    private static Vec3[] buildRayOrigins(Vec3 feet, double radius) {
+        int count = rayCount();
         Vec3[] origins = new Vec3[count + 1];
-        origins[0]     = feet;
+        origins[0] = feet;
         for (int i = 0; i < count; i++) {
             double angle   = 2 * Math.PI * i / count;
             origins[i + 1] = feet.add(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);

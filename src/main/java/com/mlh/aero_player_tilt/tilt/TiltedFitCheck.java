@@ -3,6 +3,7 @@ package com.mlh.aero_player_tilt.tilt;
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.companion.math.BoundingBox3d;
 import dev.ryanhcode.sable.companion.math.BoundingBox3dc;
+import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
 import dev.ryanhcode.sable.mixinterface.voxel_shape_iteration.FastVoxelShapeIterable;
 import dev.ryanhcode.sable.sublevel.SubLevel;
@@ -15,6 +16,7 @@ import org.joml.Matrix4d;
 import org.joml.Quaterniond;
 import org.joml.Quaterniondc;
 import org.joml.Vector3d;
+import org.joml.Vector3dc;
 
 import java.util.Iterator;
 
@@ -64,6 +66,7 @@ public final class TiltedFitCheck {
 
         for (SubLevel subLevel : intersecting) {
             Pose3dc pose = subLevel.lastPose();
+            Vector3dc scale = pose.scale();
 
             BoxOrientation.forBox(tilt, pose, orientation);
 
@@ -77,9 +80,16 @@ public final class TiltedFitCheck {
             localBounds.expand(SEARCH_MARGIN, localBounds);
             localBounds.transformInverse(pose, bakedPose, localBounds);
 
-            Iterable<BlockPos> blocks = BlockPos.betweenClosed(
-                    BlockPos.containing(localBounds.minX, localBounds.minY, localBounds.minZ),
-                    BlockPos.containing(localBounds.maxX, localBounds.maxY, localBounds.maxZ));
+            BoundingBox3ic plot = subLevel.getPlot().getBoundingBox();
+            int minX = Math.max(plot.minX(), (int) Math.floor(localBounds.minX));
+            int minY = Math.max(plot.minY(), (int) Math.floor(localBounds.minY));
+            int minZ = Math.max(plot.minZ(), (int) Math.floor(localBounds.minZ));
+            int maxX = Math.min(plot.maxX(), (int) Math.floor(localBounds.maxX));
+            int maxY = Math.min(plot.maxY(), (int) Math.floor(localBounds.maxY));
+            int maxZ = Math.min(plot.maxZ(), (int) Math.floor(localBounds.maxZ));
+            if (minX > maxX || minY > maxY || minZ > maxZ) continue;
+
+            Iterable<BlockPos> blocks = BlockPos.betweenClosed(minX, minY, minZ, maxX, maxY, maxZ);
 
             for (BlockPos block : blocks) {
                 BlockState state = level.getBlockState(block);
@@ -91,11 +101,11 @@ public final class TiltedFitCheck {
                 while (iterator.hasNext()) {
                     BoundingBox3dc box = iterator.next();
                     box.center(blockCenter);
-                    box.size(blockSize);
+                    box.size(blockSize).mul(scale);
 
                     rel.set(block.getX() + blockCenter.x,
                             block.getY() + blockCenter.y,
-                            block.getZ() + blockCenter.z).sub(localCenter);
+                            block.getZ() + blockCenter.z).sub(localCenter).mul(scale);
                     localOrientation.transformInverse(rel);
                     rel.y += centerOffset;
 
