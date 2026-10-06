@@ -1,5 +1,7 @@
 package com.mlh.aero_player_tilt.mixins.sable;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mlh.aero_player_tilt.tilt.DeckCarryGrace;
 import com.mlh.aero_player_tilt.tilt.DeckFlightAccess;
@@ -18,7 +20,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = SubLevelEntityCollision.class, remap = false)
@@ -62,45 +63,47 @@ public class SubLevelEntityCollisionMixin {
         return DeckCarryGrace.footedOn(entity, deckId) || DeckCarryGrace.supportedWithin(entity, 2);
     }
 
-    @Redirect(method = "collide",
+    @WrapOperation(method = "collide",
             at = @At(value = "INVOKE", target = GET_EYE_HEIGHT, ordinal = 1))
-    private static float aeroCamSync$pivotUp(Entity entity) {
-        return PlayerTilt.pivotHeight(entity);
+    private static float aeroCamSync$pivotUp(Entity entity, Operation<Float> original) {
+        return PlayerTilt.isTilted(entity) ? 0.0f : original.call(entity);
     }
 
-    @Redirect(method = "collide",
+    @WrapOperation(method = "collide",
             at = @At(value = "INVOKE", target = GET_EYE_HEIGHT, ordinal = 2))
-    private static float aeroCamSync$pivotDown(Entity entity) {
-        return PlayerTilt.pivotHeight(entity);
+    private static float aeroCamSync$pivotDown(Entity entity, Operation<Float> original) {
+        return PlayerTilt.isTilted(entity) ? 0.0f : original.call(entity);
     }
 
-    @Redirect(method = "transformEntityBoundsCenter",
+    @WrapOperation(method = "transformEntityBoundsCenter",
             at = @At(value = "INVOKE", target = GET_EYE_HEIGHT, ordinal = 0))
-    private static float aeroCamSync$pivotInitial(Entity entity) {
-        return PlayerTilt.pivotHeight(entity);
+    private static float aeroCamSync$pivotInitial(Entity entity, Operation<Float> original) {
+        return PlayerTilt.isTilted(entity) ? 0.0f : original.call(entity);
     }
 
-    @Redirect(method = "collide",
+    @WrapOperation(method = "collide",
             at = @At(value = "INVOKE",
                     target = "Lorg/joml/Vector3d;dot(Lorg/joml/Vector3dc;)D",
                     ordinal = 0))
     private static double aeroCamSync$floorByWorldUp(Vector3d normalizedMtv, Vector3dc entityUp,
+                                                     Operation<Double> original,
                                                      @Local(argsOnly = true) Entity entity) {
-        if (!PlayerTilt.isTilted(entity)) return normalizedMtv.dot(entityUp);
+        if (!PlayerTilt.isTilted(entity)) return original.call(normalizedMtv, entityUp);
 
-        if (com.mlh.aero_player_tilt.tilt.Boots.holding(entity)) return normalizedMtv.dot(entityUp);
+        if (com.mlh.aero_player_tilt.tilt.Boots.holding(entity)) return original.call(normalizedMtv, entityUp);
 
         return normalizedMtv.y;
     }
 
-    @Redirect(method = "collide",
+    @WrapOperation(method = "collide",
             at = @At(value = "INVOKE",
                     target = "Lorg/joml/Vector3d;mul(DLorg/joml/Vector3d;)Lorg/joml/Vector3d;",
                     ordinal = 1))
     private static Vector3d aeroCamSync$antiSlide(Vector3d entityUp, double alongEntityUp, Vector3d maxMTV,
+                                                  Operation<Vector3d> original,
                                                   @Local(argsOnly = true) Entity entity) {
         if (!PlayerTilt.isTilted(entity)) {
-            return entityUp.mul(alongEntityUp, maxMTV);
+            return original.call(entityUp, alongEntityUp, maxMTV);
         }
 
         if (com.mlh.aero_player_tilt.tilt.Boots.holding(entity)) {
@@ -113,12 +116,12 @@ public class SubLevelEntityCollisionMixin {
                 return maxMTV.set(support).mul(Math.signum(outwards));
             }
 
-            return entityUp.mul(alongEntityUp, maxMTV);
+            return original.call(entityUp, alongEntityUp, maxMTV);
         }
 
         if (entity instanceof DeckFlightAccess flight && flight.aero$inDeckFlight()) {
             aeroCamSync$recordMtv(entity, "vertDeck", maxMTV);
-            return entityUp.mul(alongEntityUp, maxMTV);
+            return original.call(entityUp, alongEntityUp, maxMTV);
         }
 
         double vertical = maxMTV.y;
@@ -127,7 +130,7 @@ public class SubLevelEntityCollisionMixin {
         if (depth < 1.0e-9 || vertical / depth < PlayerTilt.floorNormalY()) {
             aeroCamSync$recordMtv(entity, "wallKeep", maxMTV);
             aeroCamSync$armStraightenScale(entity, 1.0);
-            return entityUp.mul(alongEntityUp, maxMTV);
+            return original.call(entityUp, alongEntityUp, maxMTV);
         }
 
         aeroCamSync$recordMtv(entity, "vert", maxMTV);
@@ -136,12 +139,13 @@ public class SubLevelEntityCollisionMixin {
         return maxMTV.set(0.0, vertical, 0.0);
     }
 
-    @Redirect(method = "collide",
+    @WrapOperation(method = "collide",
             at = @At(value = "INVOKE",
                     target = "Lorg/joml/Vector3d;normalize(D)Lorg/joml/Vector3d;"))
     private static Vector3d aeroCamSync$antiSlideSeparation(Vector3d straightened, double preLength,
+                                                            Operation<Vector3d> original,
                                                             @Local(argsOnly = true) Entity entity) {
-        return straightened.normalize(preLength * aeroCamSync$takeStraightenScale(entity));
+        return original.call(straightened, preLength * aeroCamSync$takeStraightenScale(entity));
     }
 
     @Unique private static double aeroCamSync$clientStraightenScale = 1.0;
@@ -168,15 +172,16 @@ public class SubLevelEntityCollisionMixin {
         return scale;
     }
 
-    @Redirect(method = "collide",
+    @WrapOperation(method = "collide",
             at = @At(value = "INVOKE",
                     target = "Lorg/joml/Vector3d;mul(D)Lorg/joml/Vector3d;",
                     ordinal = 0))
     private static Vector3d aeroCamSync$horizontalWallLoss(Vector3d normalizedMtv, double alongNormal,
+                                                           Operation<Vector3d> original,
                                                            @Local(argsOnly = true) Entity entity,
                                                            @Local(argsOnly = true) LevelReusedVectors sink) {
         if (!PlayerTilt.isTilted(entity) || com.mlh.aero_player_tilt.tilt.Boots.holding(entity)) {
-            return normalizedMtv.mul(alongNormal);
+            return original.call(normalizedMtv, alongNormal);
         }
 
         aeroCamSync$recordMtv(entity, "horiz", normalizedMtv);
@@ -206,7 +211,7 @@ public class SubLevelEntityCollisionMixin {
         return normalizedMtv.set(hx * into, 0.0, hz * into);
     }
 
-    @Redirect(method = "collide",
+    @WrapOperation(method = "collide",
             at = @At(value = "INVOKE",
                     target = "Ldev/ryanhcode/sable/api/math/OrientedBoundingBox3d;sat("
                             + "Ldev/ryanhcode/sable/api/math/OrientedBoundingBox3d;"
@@ -215,9 +220,10 @@ public class SubLevelEntityCollisionMixin {
     private static Vector3d aeroCamSync$hideCeilingFromSolver(OrientedBoundingBox3d entityBox,
                                                               OrientedBoundingBox3d blockBox,
                                                               Vector3d dest,
+                                                              Operation<Vector3d> original,
                                                               @Local(argsOnly = true) Entity entity,
                                                               @Local(argsOnly = true) LevelReusedVectors sink) {
-        Vector3d mtv = OrientedBoundingBox3d.sat(entityBox, blockBox, dest);
+        Vector3d mtv = original.call(entityBox, blockBox, dest);
 
         if (mtv.x == Double.MAX_VALUE || mtv.y == Double.MAX_VALUE || mtv.z == Double.MAX_VALUE) {
             return mtv;
@@ -254,23 +260,24 @@ public class SubLevelEntityCollisionMixin {
         return mtv.set(0.0, -straightened, 0.0);
     }
 
-    @Redirect(method = "tryStepUp",
+    @WrapOperation(method = "tryStepUp",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;maxUpStep()F"))
-    private static float aeroCamSync$stepUpBudget(Entity entity) {
+    private static float aeroCamSync$stepUpBudget(Entity entity, Operation<Float> original) {
         return StepUpBudget.remaining(entity);
     }
 
-    @Redirect(method = "tryStepUp",
+    @WrapOperation(method = "tryStepUp",
             at = @At(value = "INVOKE",
                     target = "Lorg/joml/Vector3d;fma(DLorg/joml/Vector3dc;)Lorg/joml/Vector3d;",
                     ordinal = 2))
     private static Vector3d aeroCamSync$accountStepUp(Vector3d collisionMotion, double stepUp,
                                                       Vector3dc up,
+                                                      Operation<Vector3d> original,
                                                       @Local(argsOnly = true) Entity entity) {
         StepUpBudget.spend(entity, stepUp);
         aeroCamSync$recordMtv(entity, "step", new Vector3d(up).mul(stepUp));
 
-        return collisionMotion.fma(stepUp, up);
+        return original.call(collisionMotion, stepUp, up);
     }
 
     @Unique
