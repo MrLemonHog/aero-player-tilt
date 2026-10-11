@@ -17,7 +17,7 @@ public class EntitySubLevelUtilMixin {
                                                    CallbackInfoReturnable<Quaterniondc> cir) {
         Quaterniond tilt = PlayerTilt.getOrientation(entity, partialTicks);
         if (tilt != null) {
-            cir.setReturnValue(tilt);
+            cir.setReturnValue(com.mlh.aero_player_tilt.tilt.Boots.footing(entity, tilt));
         }
     }
 

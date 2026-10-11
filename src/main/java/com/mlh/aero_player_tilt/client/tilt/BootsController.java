@@ -6,7 +6,15 @@ import com.mlh.aero_player_tilt.tilt.PlayerTilt;
 import com.mlh.aero_player_tilt.tilt.TiltPolicy;
 import dev.ryanhcode.sable.sublevel.ClientSubLevel;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Quaterniond;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
@@ -49,6 +57,98 @@ public final class BootsController {
 
     private static boolean waitForLanding;
 
+    private static boolean leapt;
+
+    private static boolean adrift;
+
+    private static final double KEEP_RANGE = 8.0;
+
+    private static final double MAGNET_RANGE = 2.5;
+
+    private record Rim(Direction from, double level, double[] lines) {
+        static Rim of(Direction from, double level) {
+            double[] lines = new double[6];
+            java.util.Arrays.fill(lines, Double.NaN);
+            return new Rim(from, level, lines);
+        }
+
+        boolean empty() {
+            for (double line : lines) if (!Double.isNaN(line)) return false;
+            return true;
+        }
+
+        double past(Vector3d feet, Direction to) {
+            double line = lines[to.get3DDataValue()];
+            return Double.isNaN(line) ? Double.NEGATIVE_INFINITY : along(feet, to) - line;
+        }
+
+        boolean beyond(Vector3d feet) {
+            for (Direction to : Direction.values()) if (past(feet, to) > 0.0) return true;
+            return false;
+        }
+
+        @Nullable
+        Direction ahead(Vector3d feet) {
+            Direction best = null;
+            double most = 0.0;
+            for (Direction to : Direction.values()) {
+                double past = past(feet, to);
+                if (past > most) {
+                    most = past;
+                    best = to;
+                }
+            }
+            return best;
+        }
+
+        Vector3d lean(Vector3d feet, double radius, boolean hold) {
+            double above = along(feet, from) - level;
+            if (hold && !beyond(feet)) above = Math.min(above, 0.0);
+
+            Vector3d lean = face(from).mul(Math.max(0.0, above + radius));
+            for (Direction to : Direction.values()) {
+                double past = past(feet, to);
+                if (past + radius > 0.0) lean.fma(past + radius, face(to));
+            }
+            return lean;
+        }
+
+        double off(Vector3d feet, double radius) {
+            return lean(feet, radius, false).length();
+        }
+
+        Rim flip(Direction to) {
+            Rim flipped = of(to, lines[to.get3DDataValue()]);
+            for (Direction other : Direction.values()) {
+                if (other.getAxis() == to.getAxis()) continue;
+                flipped.lines[other.get3DDataValue()] = lines[other.get3DDataValue()];
+            }
+            flipped.lines[from.get3DDataValue()] = level;
+            return flipped;
+        }
+    }
+
+    @Nullable private static Rim rim;
+
+    private static float rolling;
+
+    private static String rolled = "-";
+
+    @Nullable private static Vector3d gap;
+
+    private static final float ROLL_SETTLE = 10f;
+
+    private static final double ROLL_SWITCH = Math.toRadians(55.0);
+
+    private static final double MIN_ROLL = 0.05;
+
+    private static final double FLOOR_DEPTH = 0.05;
+
+
+    private static final double CLEAR = 2.0;
+
+    private static final double TOUCH = 0.15;
+
     private static final double AIRBORNE_REACH = 2.0;
 
     private static final float MIN_HOLD_TICKS = 10f;
@@ -67,7 +167,7 @@ public final class BootsController {
 
     private static float steepTicks;
 
-    private static final double BASE_RATE = 14.0;
+    private static final double BASE_RATE = 30.0;
 
     private static double rate;
 
@@ -98,6 +198,10 @@ public final class BootsController {
         return attached;
     }
 
+    public static boolean adrift() {
+        return adrift && !attached;
+    }
+
     @Nullable
     public static ClientSubLevel deck() {
         return deck != null && !deck.isRemoved() ? deck : null;
@@ -123,6 +227,11 @@ public final class BootsController {
     public static void tick(LocalPlayer player) {
         boolean jumped = jumpPressed(player);
 
+        if (player.onGround()) {
+            leapt = attached && jumping(player);
+            adrift = false;
+        }
+
         if (!allowed(player)) {
             release();
             return;
@@ -143,7 +252,7 @@ public final class BootsController {
             }
         }
 
-        if (attached && jumped && flips() && !player.onGround()) {
+        if (attached && jumped && leapt && flips() && !player.onGround()) {
             release();
             waitForLanding = true;
             return;
@@ -226,12 +335,86 @@ public final class BootsController {
     private static boolean lose(LocalPlayer player) {
         missTicks += 1f;
 
-        if (missTicks > holdTicks(player)) {
+        if (missTicks > holdTicks(player)
+                || (flips() && !player.onGround() && !anchored(player))) {
             release();
+            adrift = !player.onGround();
             return false;
         }
 
         return true;
+    }
+
+    private static boolean anchored(LocalPlayer player) {
+        ClientSubLevel held = deck();
+        if (held == null || support == null) return false;
+
+        double size = com.mlh.aero_player_tilt.client.utils.BodyScale.of(player);
+        Quaterniond pose = new Quaterniond(held.logicalPose().orientation());
+
+        Vec3 feet = player.position();
+        Vector3d up = up();
+        double half = player.getBbHeight() * 0.5;
+        Vec3 middle = up == null ? player.getBoundingBox().getCenter()
+                : feet.add(up.x * half, up.y * half, up.z * half);
+
+        if (towards(player, held, pose, feet, middle, support, KEEP_RANGE * size) < NO_HIT) {
+            return true;
+        }
+
+        Direction nearest = null;
+        double best = MAGNET_RANGE * size;
+
+        for (Direction face : Direction.values()) {
+            if (face == support) continue;
+
+            double distance = towards(player, held, pose, feet, middle, face, best);
+            if (distance < best && canStand(player, face)) {
+                best = distance;
+                nearest = face;
+            }
+        }
+
+        if (nearest == null) return false;
+
+        commit(nearest);
+        aimAt(face(nearest));
+
+        Vector3d out = pose.transform(face(nearest)).normalize();
+        Vec3 motion = player.getDeltaMovement();
+        double away = motion.x * out.x + motion.y * out.y + motion.z * out.z;
+        if (away > 0.0) player.setDeltaMovement(motion.subtract(out.x * away, out.y * away, out.z * away));
+
+        return true;
+    }
+
+    private static final double NO_HIT = Double.MAX_VALUE;
+
+    private static double towards(LocalPlayer player, ClientSubLevel held, Quaterniond pose,
+                                  Vec3 feet, Vec3 middle, Direction face, double range) {
+        Vector3d in = pose.transform(face(face)).normalize().negate();
+
+        return Math.min(cast(player, held, feet, in, face, range),
+                cast(player, held, middle, in, face, range));
+    }
+
+    private static double cast(LocalPlayer player, ClientSubLevel held, Vec3 from, Vector3d in,
+                               Direction face, double range) {
+        Vec3 to = from.add(in.x * range, in.y * range, in.z * range);
+
+        BlockHitResult hit = player.level().clip(new ClipContext(
+                from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
+
+        if (hit.getType() == HitResult.Type.MISS || hit.getDirection() != face) return NO_HIT;
+
+        dev.ryanhcode.sable.sublevel.SubLevel space =
+                dev.ryanhcode.sable.Sable.HELPER.getContaining(player.level(), hit.getLocation());
+        if (space == null || !held.getUniqueId().equals(space.getUniqueId())) return NO_HIT;
+
+        Vector3d landed = held.logicalPose().transformPosition(new Vector3d(
+                hit.getLocation().x, hit.getLocation().y, hit.getLocation().z));
+
+        return landed.distance(from.x, from.y, from.z);
     }
 
     private static boolean settle(LocalPlayer player, BootsSurface.Contact contact) {
@@ -262,7 +445,18 @@ public final class BootsController {
 
         edge = contact.edge();
 
-        Direction on = settleFace(contact, best, allowedFace);
+        Vector3d rolled = flips() && support != null ? roll(player) : null;
+        if (rolled != null) {
+            missTicks = 0f;
+            steepTicks = 0f;
+            aimAt(rolled);
+            return true;
+        }
+
+        rim = null;
+        gap = null;
+
+        Direction on = settleFace(player, contact, best, allowedFace);
         if (on == null) return lose(player);
 
         missTicks = 0f;
@@ -271,6 +465,210 @@ public final class BootsController {
         aimAt(lean(contact, on, allowedFace,
                 com.mlh.aero_player_tilt.client.utils.BodyScale.of(player)));
         return true;
+    }
+
+    @Nullable
+    private static Vector3d roll(LocalPlayer player) {
+        ClientSubLevel held = deck();
+        if (held == null || support == null) return null;
+
+        Level plot = held.getLevel();
+        double scale = Math.max(1.0e-3, held.logicalPose().scale().x());
+        double size = com.mlh.aero_player_tilt.client.utils.BodyScale.of(player) / scale;
+        double radius = Math.max(MIN_ROLL, Config.value(Config.MAGNETIC_LEAN, 0.30) * size);
+
+        Vector3d feet = held.logicalPose().transformPositionInverse(
+                new Vector3d(player.getX(), player.getY(), player.getZ()));
+
+        Vector3d n = face(support);
+        boolean beyond = rim != null && rim.from() == support && rim.beyond(feet);
+        double drop = Config.value(Config.MAGNETIC_DROP, 3.0) * size;
+        AABB floor = floorUnder(plot, feet, n, beyond ? TOUCH : Math.max(CLEAR * size, drop + 1.5 * size));
+
+        if (floor != null) {
+            double level = reach(floor, support);
+            Vector3d base = new Vector3d(feet).fma(level - along(feet, support), n);
+            Rim found = Rim.of(support, level);
+
+            for (Direction to : Direction.values()) {
+                if (to.getAxis() == support.getAxis()) continue;
+                found.lines()[to.get3DDataValue()] =
+                        rimAhead(plot, base, floor, support, to, radius, drop + FLOOR_DEPTH);
+            }
+
+            rim = found.empty() ? null : found;
+            gap = null;
+            rolled = "face";
+            if (rim == null) return n;
+        } else if (rim == null || rim.from() != support || rim.off(feet, radius) > radius * 3.0 + 1.0) {
+            gap = null;
+            rolled = "lost";
+            return null;
+        } else {
+            rolled = "rim";
+        }
+
+        rolling = player.onGround() ? 0f : Math.max(0f, rolling - 1f);
+        boolean hold = rolling <= 0f;
+
+        gap = null;
+
+        Vector3d lean = rim.lean(feet, radius, hold);
+        if (lean.lengthSquared() < 1.0e-12) return n;
+        lean.normalize();
+
+        if (lean.dot(n) < Math.cos(ROLL_SWITCH)) {
+            Direction to = rim.ahead(feet);
+
+            if (to != null && fits(player, held, plot, feet, to)) {
+                turnMotion(player, held, support, to);
+                commit(to);
+                rim = rim.flip(to);
+                rolling = ROLL_SETTLE;
+                rolled = "turn";
+                gap = null;
+                return rim.lean(feet, radius, false).normalize();
+            }
+
+            rolled = to == null ? "cap" : "blocked";
+            if (to != null && player.onGround()) {
+                rim = null;
+                gap = null;
+                return null;
+            }
+
+            gap = floor == null && to != null ? new Vector3d(lean) : null;
+
+            Vector3d side = new Vector3d(lean).fma(-lean.dot(n), n);
+            if (side.lengthSquared() < 1.0e-12) return n;
+            side.normalize();
+            return new Vector3d(n).mul(Math.cos(ROLL_SWITCH)).fma(Math.sin(ROLL_SWITCH), side);
+        }
+
+        return lean;
+    }
+
+    @Nullable
+    private static AABB floorUnder(Level plot, Vector3d feet, Vector3d up, double depth) {
+        Vector3d at = new Vector3d();
+
+        for (double down = FLOOR_DEPTH; down <= depth; down += 0.0625) {
+            AABB box = box(plot, at.set(feet).fma(-down, up));
+            if (box != null) return box;
+        }
+
+        return null;
+    }
+
+    private static boolean canStand(LocalPlayer player, Direction face) {
+        ClientSubLevel held = deck();
+        if (held == null) return true;
+
+        Vector3d feet = held.logicalPose().transformPositionInverse(
+                new Vector3d(player.getX(), player.getY(), player.getZ()));
+        return fits(player, held, held.getLevel(), feet, face);
+    }
+
+    private static boolean fits(LocalPlayer player, ClientSubLevel held, Level plot, Vector3d feet,
+                                Direction face) {
+        double scale = Math.max(1.0e-3, held.logicalPose().scale().x());
+        double height = player.getBbHeight() / scale;
+        double half = player.getBbWidth() * 0.45 / scale;
+
+        double[] min = {feet.x - half, feet.y - half, feet.z - half};
+        double[] max = {feet.x + half, feet.y + half, feet.z + half};
+
+        int axis = face.getAxis().ordinal();
+        double base = axis == 0 ? feet.x : axis == 1 ? feet.y : feet.z;
+        boolean positive = face.getAxisDirection() == Direction.AxisDirection.POSITIVE;
+        min[axis] = positive ? base + 0.02 : base - height;
+        max[axis] = positive ? base + height : base - 0.02;
+
+        AABB room = new AABB(min[0], min[1], min[2], max[0], max[1], max[2]);
+
+        for (BlockPos pos : BlockPos.betweenClosed(
+                BlockPos.containing(room.minX, room.minY, room.minZ),
+                BlockPos.containing(room.maxX, room.maxY, room.maxZ))) {
+            VoxelShape shape = plot.getBlockState(pos).getCollisionShape(plot, pos);
+            if (shape.isEmpty()) continue;
+
+            for (AABB part : shape.toAabbs()) {
+                if (part.move(pos).intersects(room)) return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static void turnMotion(LocalPlayer player, ClientSubLevel held, Direction from, Direction to) {
+        Quaterniond pose = new Quaterniond(held.logicalPose().orientation());
+        Vector3d was = pose.transform(face(from)).normalize();
+        Vector3d now = pose.transform(face(to)).normalize();
+
+        Vec3 motion = player.getDeltaMovement();
+        Vector3d turned = new Quaterniond().rotationTo(was, now)
+                .transform(new Vector3d(motion.x, motion.y, motion.z));
+
+        player.setDeltaMovement(turned.x, turned.y, turned.z);
+    }
+
+    private static double rimAhead(Level plot, Vector3d feet, AABB floor, Direction on, Direction to,
+                                   double radius, double drop) {
+        double level = reach(floor, on);
+        double start = along(feet, to);
+        Vector3d probe = new Vector3d(feet).fma(-FLOOR_DEPTH, face(on));
+
+        AABB box = floor;
+        for (int step = 0; step < 8; step++) {
+            double line = reach(box, to);
+            if (line - start > radius) return Double.NaN;
+
+            probe.fma(line - along(probe, to) + FLOOR_DEPTH * 0.5, face(to));
+
+            AABB next = box(plot, probe);
+            if (next == null) {
+                Vector3d over = new Vector3d(probe).fma(FLOOR_DEPTH * 2.0, face(on));
+                if (box(plot, over) != null) return Double.NaN;
+                return floorBelow(plot, probe, face(on), drop) ? Double.NaN : line;
+            }
+
+            if (reach(next, on) > level + 1.0e-3) return Double.NaN;
+            box = next;
+        }
+
+        return Double.NaN;
+    }
+
+    private static boolean floorBelow(Level plot, Vector3d from, Vector3d up, double depth) {
+        double step = Math.max(0.125, depth / 32.0);
+        Vector3d at = new Vector3d();
+
+        for (double down = 0.0; down <= depth; down += step) {
+            if (box(plot, at.set(from).fma(-down, up)) != null) return true;
+        }
+
+        return false;
+    }
+
+    @Nullable
+    private static AABB box(Level plot, Vector3d at) {
+        BlockPos pos = BlockPos.containing(at.x, at.y, at.z);
+        VoxelShape shape = plot.getBlockState(pos).getCollisionShape(plot, pos);
+        if (shape.isEmpty()) return null;
+
+        AABB box = shape.bounds().move(pos);
+        return box.minX <= at.x && at.x <= box.maxX
+                && box.minY <= at.y && at.y <= box.maxY
+                && box.minZ <= at.z && at.z <= box.maxZ ? box : null;
+    }
+
+    private static double reach(AABB box, Direction to) {
+        return to.getAxisDirection() == Direction.AxisDirection.POSITIVE
+                ? box.max(to.getAxis()) : -box.min(to.getAxis());
+    }
+
+    private static double along(Vector3d at, Direction to) {
+        return at.x * to.getStepX() + at.y * to.getStepY() + at.z * to.getStepZ();
     }
 
     private static Vector3d lean(BootsSurface.Contact contact, Direction on,
@@ -326,7 +724,7 @@ public final class BootsController {
     }
 
     @Nullable
-    private static Direction settleFace(BootsSurface.Contact contact, Direction best,
+    private static Direction settleFace(LocalPlayer player, BootsSurface.Contact contact, Direction best,
                                         Predicate<Direction> allowed) {
         if (support == null) {
             commit(best);
@@ -336,7 +734,7 @@ public final class BootsController {
         if (!allowed.test(support) || contact.weight(support) <= 0.0) {
             if (!flips()) return null;
 
-            commit(best);
+            if (canStand(player, best)) commit(best);
             return support;
         }
 
@@ -361,7 +759,7 @@ public final class BootsController {
         }
 
         challengeTicks += 1f;
-        if (challengeTicks < FACE_DWELL) return support;
+        if (challengeTicks < FACE_DWELL || !canStand(player, best)) return support;
 
         commit(best);
         return support;
@@ -376,6 +774,14 @@ public final class BootsController {
         support = face;
         challenger = null;
         challengeTicks = 0f;
+    }
+
+    @Nullable
+    public static Vector3d pullUp() {
+        ClientSubLevel held = deck();
+        if (!attached || held == null || gap == null) return supportUp();
+
+        return new Quaterniond(held.logicalPose().orientation()).transform(new Vector3d(gap)).normalize();
     }
 
     @Nullable
@@ -449,9 +855,9 @@ public final class BootsController {
         if (!attached) return "off";
 
         return String.format(Locale.ROOT,
-                "%s rate=%.2f gap=%.2f lean=%.1f edge=%s deck=%.3f local=%.3f"
+                "%s roll=%s rate=%.2f gap=%.2f lean=%.1f edge=%s deck=%.3f local=%.3f"
                         + " slide=%.5f idle=%.3f",
-                support == null ? "?" : support.getName(),
+                support == null ? "?" : support.getName(), rolled,
                 rate,
                 between(frame, target),
                 leanDegrees(),
@@ -553,6 +959,10 @@ public final class BootsController {
         idle = 0.0;
         idleWarned = false;
         waitForLanding = false;
+        leapt = false;
+        rim = null;
+        gap = null;
+        rolling = 0f;
         frame.identity();
         framePrev.identity();
         target.identity();
@@ -562,6 +972,7 @@ public final class BootsController {
         deck = found;
         deckId = found.getUniqueId();
         attached = true;
+        adrift = false;
         missTicks = 0f;
         steepTicks = 0f;
         placed = false;
@@ -569,6 +980,8 @@ public final class BootsController {
         idleWarned = false;
         targetNormal = null;
         support = null;
+        rim = null;
+        gap = null;
         challenger = null;
         challengeTicks = 0f;
         leaving = null;
@@ -679,7 +1092,7 @@ public final class BootsController {
     public static String debug() {
         if (!attached) {
             if (!enabled()) return "-";
-            return waitForLanding ? "let go" : "off";
+            return waitForLanding ? "let go" : adrift ? "adrift" : "off";
         }
 
         Vector3d up = up();

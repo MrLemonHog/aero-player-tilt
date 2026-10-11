@@ -244,6 +244,7 @@ public abstract class JumpTiltMixin implements DeckFlightAccess {
     @Unique
     private boolean aero$deckGravityArmed(LivingEntity self) {
         if (Boots.holding(self)) return true;
+        if (Boots.adrift(self)) return false;
 
         if (com.mlh.aero_player_tilt.tilt.TiltPolicy.deckGravity() == DeckGravity.WORLD) return false;
 
@@ -277,7 +278,7 @@ public abstract class JumpTiltMixin implements DeckFlightAccess {
 
         boolean booted = Boots.holding(self);
 
-        Vector3d up = booted ? Boots.support(self, new Vector3d()) : null;
+        Vector3d up = booted ? Boots.pullUp(self, new Vector3d()) : null;
         if (up == null) up = tilt.transform(new Vector3d(0.0, 1.0, 0.0));
 
         Vec3 velocity = self.getDeltaMovement();

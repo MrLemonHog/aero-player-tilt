@@ -147,8 +147,8 @@ public final class ClientPlayerTilt {
 
     public static boolean leaning(Quaterniond raw) {
         return com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.rocking()
-                || PlayerTilt.isMeaningful(raw.w)
-                || PlayerTilt.isMeaningful(
+                || PlayerTilt.isVisible(raw.w)
+                || PlayerTilt.isVisible(
                         com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.steadyLean(new Quaterniond(raw)).w);
     }
 
@@ -188,6 +188,17 @@ public final class ClientPlayerTilt {
 
         TiltSnapshot snapshot = REMOTE.get(player.getId());
         return snapshot != null && snapshot.isActive() && snapshot.isBooted();
+    }
+
+    @Nullable
+    public static org.joml.Vector3d pullUp(Player player) {
+        if (Minecraft.getInstance().player != player) return null;
+
+        return BootsController.pullUp();
+    }
+
+    public static boolean isAdrift(Player player) {
+        return Minecraft.getInstance().player == player && BootsController.adrift();
     }
 
     @Nullable

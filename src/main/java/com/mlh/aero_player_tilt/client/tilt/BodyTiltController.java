@@ -153,7 +153,9 @@ public final class BodyTiltController {
             lastShipId = null;
         }
 
-        boolean tooSteep = tiltAngle(carried) > maxTiltAngle();
+        float maxAngle = maxTiltAngle();
+        boolean tooSteep = tiltAngle(carried) > maxAngle + (float) PlayerTilt.FLOOR_FADE;
+        if (!tooSteep && !releasing) clampTilt(carried, maxAngle);
 
         boolean predicting = landing != null && !tooSteep;
 
@@ -182,12 +184,15 @@ public final class BodyTiltController {
         Quaternionf target = (surfaceNormal != null)
                 ? new Quaternionf().rotationTo(UP, surfaceNormal)
                 : new Quaternionf();
+        clampTilt(target, maxAngle);
 
         float halfLife = (surfaceNormal != null)
                 ? Config.SMOOTH_SPEED.get().floatValue()
                 : Config.SMOOTH_SPEED_EXIT.get().floatValue();
 
+        float before = angleTo(bodyTilt, target);
         bodyTilt.slerp(target, smoothingStep(deltaTime, halfLife));
+        if (surfaceNormal == null) finishTail(target, before, deltaTime, halfLife);
 
         settleClamp();
 
@@ -195,6 +200,32 @@ public final class BodyTiltController {
                 && !com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.rocking()) {
             settleUpright();
         }
+    }
+
+    private static final double TAIL_ANGLE = Math.toRadians(2.0);
+
+    private static final double TAIL_FLOOR = Math.toRadians(0.3);
+
+    private static void finishTail(Quaternionf target, float before, float deltaTime, float halfLife) {
+        if (halfLife <= 0f || before <= 0f) return;
+
+        double speed = Math.max(TAIL_FLOOR, Math.log(2.0) / halfLife * Math.sqrt(TAIL_ANGLE * before));
+        double wanted = Math.max(0.0, before - speed * deltaTime);
+
+        float left = angleTo(bodyTilt, target);
+        if (left <= wanted) return;
+
+        if (wanted <= 0.0) {
+            bodyTilt.set(target);
+            return;
+        }
+
+        bodyTilt.slerp(target, (float) ((left - wanted) / left)).normalize();
+    }
+
+    private static float angleTo(Quaternionf from, Quaternionf to) {
+        float dot = Math.abs(from.dot(to)) / (float) Math.sqrt(from.lengthSquared() * to.lengthSquared());
+        return 2f * (float) Math.acos(Math.min(1f, dot));
     }
 
     private static void settleClamp() {
@@ -209,7 +240,7 @@ public final class BodyTiltController {
     }
 
     private static void settleUpright() {
-        if (PlayerTilt.isMeaningful(bodyTilt.w())) return;
+        if (PlayerTilt.isVisible(bodyTilt.w())) return;
 
         bodyTilt.identity();
     }

@@ -114,6 +114,7 @@ public final class TiltedPlayerBox {
     private static Quaterniond boxOrientation(Entity entity) {
         Quaterniond tilt = PlayerTilt.getRenderOrientation(entity, 1.0f);
         if (tilt == null) return null;
+        tilt = Boots.footing(entity, tilt);
 
         SubLevel deck = DeckFrame.forBox(entity);
         return deck != null
@@ -230,6 +231,7 @@ public final class TiltedPlayerBox {
     public static Boolean intersects(Entity entity, VoxelShape shape, @Nullable Pose3dc shapeSpace) {
         Quaterniond tilt = PlayerTilt.getRenderOrientation(entity, 1.0f);
         if (tilt == null) return null;
+        tilt = Boots.footing(entity, tilt);
 
         if (shape.isEmpty()) return Boolean.FALSE;
 

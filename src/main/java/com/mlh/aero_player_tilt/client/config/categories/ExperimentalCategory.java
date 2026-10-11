@@ -36,6 +36,14 @@ public class ExperimentalCategory {
                 .withVisibleWhen(() -> Config.MAGNETIC_BOOTS.get() && TiltPolicy.allowsMagneticBoots()));
 
         cat.add(new SliderEntry(
+                "aero_player_tilt.configuration.magneticDrop",
+                "aero_player_tilt.configuration.magneticDrop.tooltip",
+                Config.MAGNETIC_DROP,
+                1.0, 6.0, 0.5,
+                1.0, 6.0)
+                .withVisibleWhen(() -> Config.MAGNETIC_BOOTS.get() && TiltPolicy.allowsMagneticBoots()));
+
+        cat.add(new SliderEntry(
                 "aero_player_tilt.configuration.magneticPull",
                 "aero_player_tilt.configuration.magneticPull.tooltip",
                 Config.MAGNETIC_PULL,

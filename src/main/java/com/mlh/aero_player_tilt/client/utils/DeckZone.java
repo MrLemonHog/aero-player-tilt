@@ -63,8 +63,6 @@ public final class DeckZone {
         int inside = 0;
         List<SurfaceRaycaster.Patch> decks = new ArrayList<>(2);
 
-        float minNormalY = (float) com.mlh.aero_player_tilt.tilt.PlayerTilt.floorNormalY();
-
         for (SubLevel subLevel : nearby) {
             if (!(subLevel instanceof ClientSubLevel deck)) continue;
             if (deck.isRemoved()) continue;
@@ -77,12 +75,14 @@ public final class DeckZone {
             Vector3f up = MathUtils.transformToWorldSpace(
                     new Vector3f(0f, 1f, 0f), deck.renderPose(partialTick).orientation());
 
-            if (up.y < minNormalY) continue;
+            double fade = com.mlh.aero_player_tilt.tilt.PlayerTilt.floorWeight(up.y);
+            if (fade <= 0.0) continue;
 
-            sum.add(new Vector3f(up).mul((float) depth));
-            total += depth;
+            double weight = depth * fade;
+            sum.add(new Vector3f(up).mul((float) weight));
+            total += weight;
             inside++;
-            decks.add(new SurfaceRaycaster.Patch(deck, depth, new Vector3f(up)));
+            decks.add(new SurfaceRaycaster.Patch(deck, weight, new Vector3f(up)));
         }
 
         if (inside == 0 || sum.lengthSquared() < 1.0e-9f) return linger(partialTick, deltaTicks);
@@ -110,7 +110,7 @@ public final class DeckZone {
         Vector3f up = MathUtils.transformToWorldSpace(
                 new Vector3f(0f, 1f, 0f), held.renderPose(partialTick).orientation());
 
-        if (up.y < (float) com.mlh.aero_player_tilt.tilt.PlayerTilt.floorNormalY()) {
+        if (com.mlh.aero_player_tilt.tilt.PlayerTilt.floorWeight(up.y) <= 0.0) {
             forget();
             return SurfaceRaycaster.Floor.NONE;
         }

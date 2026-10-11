@@ -19,6 +19,12 @@ public final class PlayerTilt {
         return Math.abs(w) < IDENTITY_COS;
     }
 
+    public static final double VISIBLE_COS = 0.9999995;
+
+    public static boolean isVisible(double w) {
+        return Math.abs(w) < VISIBLE_COS;
+    }
+
     public static double maxTiltAngle() {
         double minNormalY = walkableNormalY();
         if (minNormalY <= 0.0) return Math.PI;
@@ -32,6 +38,21 @@ public final class PlayerTilt {
 
     public static boolean anyFace() {
         return walkableNormalY() <= 0.0;
+    }
+
+    public static final double FLOOR_FADE = Math.toRadians(15.0);
+
+    private static final double FLOOR_FADE_LIMIT = Math.toRadians(80.0);
+
+    public static double floorWeight(double normalY) {
+        double floor = floorNormalY();
+        if (normalY >= floor) return 1.0;
+
+        double max = Math.acos(Math.min(1.0, floor));
+        if (max + FLOOR_FADE > FLOOR_FADE_LIMIT) return 0.0;
+
+        double angle = Math.acos(Math.max(-1.0, Math.min(1.0, normalY)));
+        return Math.max(0.0, 1.0 - (angle - max) / FLOOR_FADE);
     }
 
     public static double floorNormalY() {

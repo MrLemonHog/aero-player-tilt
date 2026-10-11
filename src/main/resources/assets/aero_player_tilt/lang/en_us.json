@@ -107,6 +107,8 @@
   "aero_player_tilt.configuration.magneticReach.tooltip": "How far below your feet to look for a surface.",
   "aero_player_tilt.configuration.magneticLean": "Lean start",
   "aero_player_tilt.configuration.magneticLean.tooltip": "How close an edge has to be before the body leans over it. 0 — no lean.",
+  "aero_player_tilt.configuration.magneticDrop": "Ledge height",
+  "aero_player_tilt.configuration.magneticDrop.tooltip": "How high a ledge you can still jump down from",
   "aero_player_tilt.configuration.magneticPull": "Grip",
   "aero_player_tilt.configuration.magneticPull.tooltip": "How hard the boots press into the face. Doesn't affect jumps.",
   "aero_player_tilt.configuration.magneticSmooth": "Turn speed",

@@ -107,6 +107,8 @@
   "aero_player_tilt.configuration.magneticReach.tooltip": "Насколько далеко под ногами искать поверхность.",
   "aero_player_tilt.configuration.magneticLean": "Начало наклона",
   "aero_player_tilt.configuration.magneticLean.tooltip": "Насколько близко край, чтобы тело над ним свесилось. 0 — без наклона.",
+  "aero_player_tilt.configuration.magneticDrop": "Высота уступа",
+  "aero_player_tilt.configuration.magneticDrop.tooltip": "С какой высоты уступа можно спрыгнуть вниз",
   "aero_player_tilt.configuration.magneticPull": "Сцепление",
   "aero_player_tilt.configuration.magneticPull.tooltip": "Насколько сильно прижимает к грани. На прыжок не влияет.",
   "aero_player_tilt.configuration.magneticSmooth": "Скорость разворота",

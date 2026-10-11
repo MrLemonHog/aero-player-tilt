@@ -15,5 +15,12 @@ public class BootsTickMixin {
 
         BootsController.tick(self);
         BootsController.carry(self);
+
+        com.mlh.aero_player_tilt.tilt.Boots.stepping(true);
+    }
+
+    @Inject(method = "aiStep", at = @At("RETURN"))
+    private void aero$bootsStepped(CallbackInfo ci) {
+        com.mlh.aero_player_tilt.tilt.Boots.stepping(false);
     }
 }

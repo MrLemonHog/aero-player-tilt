@@ -38,6 +38,7 @@
     "client.StuckArrowTiltMixin",
     "client.TiltedHitboxDebugMixin",
     "client.acs.AcsFirstPersonBodyMixin",
+    "client.acs.AcsExactCameraMixin",
     "client.sable.EntityRenderVanillaEyeMixin",
     "client.sable.EntitySubLevelRotationHelperMixin",
     "client.sable.LocalPlayerSelfSoundMixin",

@@ -15,6 +15,27 @@ import javax.annotation.Nullable;
 public final class TiltRenderPivot {
     private TiltRenderPivot() {}
 
+    private static final double MAX_DRIFT = 0.5;
+
+    public static Vec3 arcDrift(Entity entity, float partialTick) {
+        if (!(dev.ryanhcode.sable.Sable.HELPER.getTrackingOrVehicleSubLevel(entity) instanceof ClientSubLevel deck)
+                || deck.isRemoved()) {
+            return Vec3.ZERO;
+        }
+
+        Vector3d from = deck.lastPose().transformPositionInverse(new Vector3d(entity.xo, entity.yo, entity.zo));
+        Vector3d to = deck.logicalPose().transformPositionInverse(
+                new Vector3d(entity.getX(), entity.getY(), entity.getZ()));
+        Vector3d arc = deck.renderPose(partialTick).transformPosition(from.lerp(to, partialTick));
+
+        Vec3 drift = new Vec3(
+                arc.x - net.minecraft.util.Mth.lerp(partialTick, entity.xOld, entity.getX()),
+                arc.y - net.minecraft.util.Mth.lerp(partialTick, entity.yOld, entity.getY()),
+                arc.z - net.minecraft.util.Mth.lerp(partialTick, entity.zOld, entity.getZ()));
+
+        return drift.lengthSqr() > MAX_DRIFT * MAX_DRIFT ? Vec3.ZERO : drift;
+    }
+
     @Nullable
     public static Vector3d correction(Entity entity, float partialTick, Vector3d dest) {
         if (!EntitySubLevelUtil.shouldKick(entity)) return null;

@@ -1,4 +1,22 @@
 # Changelog
+## 0.2.3
+
+### Added
+- Ledge height setting for magnetic boots: how high a ledge you can still jump down from
+
+### Changed
+- smoother magnetic boots turns over edges and corners
+- magnetic boots no longer hop at edges
+- losing grip with magnetic boots no longer flings you away
+- a stray jump press at a corner no longer makes magnetic boots let go
+
+### Fixed
+- fixed magnetic boots jitter on narrow sublevels
+- fixed magnetic boots getting stuck leaning on steps
+- fixed the camera snapping
+- fixed shaking at the max tilt angle on spinning sublevels
+- fixed the camera and player model shaking on fast-spinning sublevels
+
 ## 0.2.2
 
 ### Compatibility

@@ -109,12 +109,13 @@ public final class SurfaceRaycaster {
                 normal = MathUtils.transformToWorldSpace(normal, drawn);
             }
 
-            if (normal.y < (float) com.mlh.aero_player_tilt.tilt.PlayerTilt.floorNormalY()) {
+            double fade = com.mlh.aero_player_tilt.tilt.PlayerTilt.floorWeight(normal.y);
+            if (fade <= 0.0) {
                 DebugRayRenderer.submitRay(from, to, 0.5f, 0.5f, 0.5f);
                 continue;
             }
 
-            double weight = weigh(Math.max(0.0, feetY - contactY(deck, hit)));
+            double weight = weigh(Math.max(0.0, feetY - contactY(deck, hit))) * fade;
 
             sum.add(new Vector3f(normal).mul((float) weight));
             total += weight;

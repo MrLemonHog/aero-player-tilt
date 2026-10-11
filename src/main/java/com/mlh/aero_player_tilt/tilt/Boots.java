@@ -23,6 +23,35 @@ public final class Boots {
                 && com.mlh.aero_player_tilt.ServerTiltStore.isBooted(server.getUUID());
     }
 
+    private static boolean stepping;
+
+    public static void stepping(boolean on) {
+        stepping = on;
+    }
+
+    public static Quaterniond footing(@Nullable Entity entity, Quaterniond tilt) {
+        if (!stepping || entity == null || !entity.level().isClientSide || !holding(entity)) return tilt;
+
+        Vector3d face = support(entity, new Vector3d());
+        if (face == null) return tilt;
+
+        Vector3d up = tilt.transform(new Vector3d(0.0, 1.0, 0.0)).normalize();
+        double dot = up.dot(face);
+        if (dot > 0.999999) return tilt;
+
+        if (dot < -0.9999) {
+            Vector3d right = tilt.transform(new Vector3d(1.0, 0.0, 0.0)).normalize();
+            return new Quaterniond().fromAxisAngleRad(right.x, right.y, right.z, Math.PI).mul(tilt).normalize();
+        }
+
+        return new Quaterniond().rotationTo(up, face).mul(tilt).normalize();
+    }
+
+    public static boolean adrift(@Nullable Entity entity) {
+        return entity instanceof Player player && player.level().isClientSide
+                && com.mlh.aero_player_tilt.client.tilt.ClientPlayerTilt.isAdrift(player);
+    }
+
     @Nullable
     public static Vector3d up(@Nullable Entity entity, Vector3d dest) {
         Quaterniond tilt = PlayerTilt.getRenderOrientation(entity, 1.0f);
@@ -39,6 +68,16 @@ public final class Boots {
         }
 
         return up(entity, dest);
+    }
+
+    @Nullable
+    public static Vector3d pullUp(@Nullable Entity entity, Vector3d dest) {
+        if (entity instanceof Player player && player.level().isClientSide) {
+            Vector3d face = com.mlh.aero_player_tilt.client.tilt.ClientPlayerTilt.pullUp(player);
+            if (face != null) return dest.set(face).normalize();
+        }
+
+        return support(entity, dest);
     }
 
     public static double pull() {

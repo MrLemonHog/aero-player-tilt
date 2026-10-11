@@ -281,6 +281,10 @@ public class Config {
                             "0 \u2014 no lean.")
                     .defineInRange("testLeanStart", 0.30, 0.0, 0.5);
 
+    public static final ModConfigSpec.DoubleValue MAGNETIC_DROP =
+            BUILDER.comment("Ledge height. How high a ledge you can still jump down from")
+                    .defineInRange("testDrop", 3.0, 1.0, 6.0);
+
     public static final ModConfigSpec.DoubleValue MAGNETIC_PULL =
             BUILDER.comment("Grip. How hard the boots press into the face. Doesn't affect jumps.")
                     .defineInRange("testPull", 1.0, 0.25, 6.0);
