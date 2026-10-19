@@ -1,4 +1,13 @@
 # Changelog
+## 0.2.4
+
+### Changed
+- slightly optimized the tilt of mobs and items on sublevels
+
+### Fixed
+- fixed sounds coming from the wrong side while the camera is tilted
+- fixed no footstep sounds when walking up or down walls with magnetic boots, and too few on slopes with sticky tilt
+
 ## 0.2.3
 
 ### Added

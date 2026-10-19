@@ -61,11 +61,18 @@ public final class DeckRiderTilt {
 
         SubLevel live = Sable.HELPER.getTrackingSubLevel(entity);
         if (tilting(live)) {
-            HELD.put(entity, new Ride(live, entity.tickCount));
+            remember(entity, live);
             return live;
         }
 
         return heldDeck(entity);
+    }
+
+    private static void remember(Entity entity, SubLevel deck) {
+        Ride ride = HELD.get(entity);
+        if (ride != null && ride.deck() == deck && ride.tick() == entity.tickCount) return;
+
+        HELD.put(entity, new Ride(deck, entity.tickCount));
     }
 
     private static boolean tilting(@Nullable SubLevel deck) {

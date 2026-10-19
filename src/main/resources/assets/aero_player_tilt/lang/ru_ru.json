@@ -167,8 +167,6 @@
   "msg.aero_player_tilt.enabled": "§aНаклон игрока: ВКЛ",
   "msg.aero_player_tilt.disabled": "§cНаклон игрока: ВЫКЛ",
   "msg.aero_player_tilt.no_item_in_hand": "В основной руке нет предмета",
-  "msg.aero_player_tilt.added_to_blacklist": "Предмет %s добавлен в чёрный список",
-  "msg.aero_player_tilt.removed_from_blacklist": "Предмет %s удалён из чёрного списка",
   "screen.aero_player_tilt.config_reset.title": "Aeronautics Player Tilt: сброс конфигурации",
   "screen.aero_player_tilt.config_reset.body1": "Файл конфигурации устарел и может вызывать ошибки.",
   "screen.aero_player_tilt.config_reset.body2": "Сбросить настройки по умолчанию?",
