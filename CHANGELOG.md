@@ -1,4 +1,12 @@
 # Changelog
+## 0.2.5
+
+### Changed
+- less server load from mobs on dedicated servers
+
+### Fixed
+- fixed keys set in the mod settings resetting after a game restart
+
 ## 0.2.4
 
 ### Changed

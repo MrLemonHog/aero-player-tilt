@@ -144,6 +144,7 @@ public class ModConfigScreen extends Screen {
         saveButton = Button.builder(
                         Component.translatable("aero_player_tilt.configuration.btn.save"), btn -> {
                             Config.SPEC.save();
+                            this.minecraft.options.save();
                             saveWorldRules();
                             this.minecraft.setScreen(parent);
                         }

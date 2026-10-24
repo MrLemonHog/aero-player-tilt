@@ -349,12 +349,7 @@ public class Config {
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     public static boolean isLoaded() {
-        try {
-            MOD_ENABLED.get();
-            return true;
-        } catch (IllegalStateException e) {
-            return false;
-        }
+        return SPEC.isLoaded();
     }
 
     public static boolean flag(ModConfigSpec.BooleanValue value, boolean fallback) {
