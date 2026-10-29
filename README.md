@@ -35,3 +35,13 @@ Aeronautics Player Tilt is an add-on for [Aeronautics Camera Sync](https://modri
 
 - [Sable](https://modrinth.com/mod/sable)
 - [Aeronautics Camera Sync](https://modrinth.com/mod/aero_cam_sync) 1.4.0+
+
+<br>
+
+## For mod developers
+
+Player Tilt leans the player's body and keeps a tilted hitbox. Most mods need no changes: vanilla rays, projectiles and entity clicks already hit the tilted player
+
+If your mod runs its own hit tests against players, or you want it to drive the tilt itself, start at the [documentation](https://github.com/MrLemonHog/aero-player-tilt/blob/main/docs/API.md)
+
+Free to use in any modpack, public or private. No permission needed, and a link back is welcome but not required.
