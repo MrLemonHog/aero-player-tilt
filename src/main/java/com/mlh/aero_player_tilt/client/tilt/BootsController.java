@@ -1,5 +1,6 @@
 package com.mlh.aero_player_tilt.client.tilt;
 
+import com.mlh.aero_player_tilt.api.PlayerTiltApi;
 import com.mlh.aero_player_tilt.client.config.Config;
 import com.mlh.aero_player_tilt.client.utils.BootsSurface;
 import com.mlh.aero_player_tilt.tilt.PlayerTilt;
@@ -138,7 +139,7 @@ public final class BootsController {
 
     private static final float ROLL_SETTLE = 10f;
 
-    private static final double ROLL_SWITCH = Math.toRadians(55.0);
+    private static final double ROLL_SWITCH = Math.toRadians(48.0);
 
     private static final double MIN_ROLL = 0.05;
 
@@ -215,16 +216,34 @@ public final class BootsController {
     public static boolean enabled() {
         if (!Config.isLoaded()) return false;
 
-        return flips() || (Config.flag(Config.GRIP_SLOPES, false)
+        return flips() || (ClientPlayerTilt.settings().sticky()
                 && TiltPolicy.allowsStickyTilt()
                 && TiltPolicy.minNormalY() < 0.8);
     }
 
     public static boolean flips() {
-        return Config.flag(Config.MAGNETIC_BOOTS, false) && TiltPolicy.allowsMagneticBoots();
+        return (Config.flag(Config.MAGNETIC_BOOTS, false) || worn != null) && TiltPolicy.allowsMagneticBoots();
+    }
+
+    @Nullable
+    private static PlayerTiltApi.BootsSettings worn;
+
+    private static PlayerTiltApi.BootsSettings settings = PlayerTiltApi.BootsSettings.DEFAULT;
+
+    private static PlayerTiltApi.BootsSettings configured() {
+        return new PlayerTiltApi.BootsSettings(
+                Config.value(Config.MAGNETIC_REACH, 0.75),
+                Config.value(Config.MAGNETIC_LEAN, 0.30),
+                Config.value(Config.MAGNETIC_DROP, 3.0),
+                Config.value(Config.MAGNETIC_PULL, 1.0),
+                Config.value(Config.MAGNETIC_SMOOTH, 1.0));
     }
 
     public static void tick(LocalPlayer player) {
+        worn = com.mlh.aero_player_tilt.apiimpl.ApiRegistry.bootsFor(player);
+        settings = worn != null ? worn : configured();
+        com.mlh.aero_player_tilt.tilt.Boots.grip(settings.grip());
+
         boolean jumped = jumpPressed(player);
 
         if (player.onGround()) {
@@ -284,6 +303,7 @@ public final class BootsController {
 
         framePrev.set(frame);
         advance();
+        roomToTurn(player);
         publish();
 
         measureDrift(player);
@@ -410,6 +430,10 @@ public final class BootsController {
         dev.ryanhcode.sable.sublevel.SubLevel space =
                 dev.ryanhcode.sable.Sable.HELPER.getContaining(player.level(), hit.getLocation());
         if (space == null || !held.getUniqueId().equals(space.getUniqueId())) return NO_HIT;
+        if (!com.mlh.aero_player_tilt.apiimpl.ApiRegistry.bootsGrip(player,
+                player.level().getBlockState(hit.getBlockPos()), hit.getBlockPos(), face)) {
+            return NO_HIT;
+        }
 
         Vector3d landed = held.logicalPose().transformPosition(new Vector3d(
                 hit.getLocation().x, hit.getLocation().y, hit.getLocation().z));
@@ -475,14 +499,14 @@ public final class BootsController {
         Level plot = held.getLevel();
         double scale = Math.max(1.0e-3, held.logicalPose().scale().x());
         double size = com.mlh.aero_player_tilt.client.utils.BodyScale.of(player) / scale;
-        double radius = Math.max(MIN_ROLL, Config.value(Config.MAGNETIC_LEAN, 0.30) * size);
+        double radius = Math.max(MIN_ROLL, settings.leanStart() * size);
 
         Vector3d feet = held.logicalPose().transformPositionInverse(
                 new Vector3d(player.getX(), player.getY(), player.getZ()));
 
         Vector3d n = face(support);
         boolean beyond = rim != null && rim.from() == support && rim.beyond(feet);
-        double drop = Config.value(Config.MAGNETIC_DROP, 3.0) * size;
+        double drop = settings.ledgeHeight() * size;
         AABB floor = floorUnder(plot, feet, n, beyond ? TOUCH : Math.max(CLEAR * size, drop + 1.5 * size));
 
         if (floor != null) {
@@ -597,7 +621,10 @@ public final class BootsController {
             }
         }
 
-        return true;
+        Vector3d up = new Quaterniond(held.logicalPose().orientation()).transform(face(face)).normalize();
+        Vector3d world = held.logicalPose().transformPosition(new Vector3d(feet)).fma(0.02 * scale, up);
+        return com.mlh.aero_player_tilt.tilt.TiltedPlayerBox.clearOfWorld(player, world, up,
+                player.getBbWidth() * 0.9, player.getBbHeight() - 0.02 * scale);
     }
 
     private static void turnMotion(LocalPlayer player, ClientSubLevel held, Direction from, Direction to) {
@@ -606,8 +633,14 @@ public final class BootsController {
         Vector3d now = pose.transform(face(to)).normalize();
 
         Vec3 motion = player.getDeltaMovement();
-        Vector3d turned = new Quaterniond().rotationTo(was, now)
-                .transform(new Vector3d(motion.x, motion.y, motion.z));
+        Vector3d velocity = new Vector3d(motion.x, motion.y, motion.z);
+        double intoWas = velocity.dot(was);
+        if (intoWas < 0.0) velocity.fma(-intoWas, was);
+        double intoNow = velocity.dot(now);
+        if (intoNow < 0.0) velocity.fma(-intoNow, now);
+        double press = Math.max(0.0, -Math.min(intoWas, intoNow));
+
+        Vector3d turned = new Quaterniond().rotationTo(was, now).transform(velocity).fma(-press, now);
 
         player.setDeltaMovement(turned.x, turned.y, turned.z);
     }
@@ -678,7 +711,7 @@ public final class BootsController {
 
         Vector3d normal = face(on);
 
-        double start = Config.value(Config.MAGNETIC_LEAN, 0.30) * size;
+        double start = settings.leanStart() * size;
         if (start <= 0.0) return normal;
 
         Vector3d pull = new Vector3d();
@@ -930,6 +963,11 @@ public final class BootsController {
                 .transform(new Vector3d(0.0, 1.0, 0.0)).normalize();
     }
 
+    public static void letGo() {
+        release();
+        waitForLanding = true;
+    }
+
     public static void release() {
         boolean held = attached;
 
@@ -1022,7 +1060,7 @@ public final class BootsController {
     }
 
     private static void advance() {
-        double smooth = Config.value(Config.MAGNETIC_SMOOTH, 1.0);
+        double smooth = settings.turnTime();
 
         if (smooth <= 0.0) {
             frame.set(target);
@@ -1048,6 +1086,31 @@ public final class BootsController {
         frame.slerp(target, turn / gap).normalize();
     }
 
+    private static void roomToTurn(LocalPlayer player) {
+        ClientSubLevel held = deck();
+        if (held == null || frame.equals(framePrev, 1.0e-9)) return;
+
+        Quaterniond pose = new Quaterniond(held.logicalPose().orientation());
+        double before = com.mlh.aero_player_tilt.tilt.TiltedPlayerBox.worldDepth(
+                player, new Quaterniond(pose).mul(framePrev), held);
+        if (com.mlh.aero_player_tilt.tilt.TiltedPlayerBox.worldDepth(
+                player, new Quaterniond(pose).mul(frame), held) <= before + 1.0e-4) return;
+
+        Quaterniond wanted = new Quaterniond(frame);
+        double low = 0.0;
+        double high = 1.0;
+        for (int i = 0; i < 5; i++) {
+            double mid = (low + high) / 2.0;
+            Quaterniond tried = new Quaterniond(framePrev).slerp(wanted, mid).normalize();
+            if (com.mlh.aero_player_tilt.tilt.TiltedPlayerBox.worldDepth(
+                    player, new Quaterniond(pose).mul(tried), held) <= before + 1.0e-4) low = mid;
+            else high = mid;
+        }
+
+        frame.set(framePrev).slerp(wanted, low).normalize();
+        rate = 0.0;
+    }
+
     private static boolean jumping(LocalPlayer player) {
         return player.input != null && player.input.jumping;
     }
@@ -1060,23 +1123,24 @@ public final class BootsController {
     }
 
     private static double reach(LocalPlayer player) {
-        double base = Config.value(Config.MAGNETIC_REACH, 0.75);
+        double base = settings.reach();
         double reach = player.onGround() ? base : base + AIRBORNE_REACH;
         return reach * com.mlh.aero_player_tilt.client.utils.BodyScale.of(player);
     }
 
     private static float holdTicks(LocalPlayer player) {
         if (!flips() || player.onGround()) {
-            return Math.max(GROUND_HOLD_TICKS, (float) Config.value(Config.HOLD_TICKS, 5.0));
+            return Math.max(GROUND_HOLD_TICKS, (float) ClientPlayerTilt.settings().holdTicks());
         }
 
-        return Math.max(MIN_HOLD_TICKS, (float) Config.value(Config.AIRBORNE_HOLD_TICKS, 60.0));
+        return Math.max(MIN_HOLD_TICKS, (float) ClientPlayerTilt.settings().airborneHoldTicks());
     }
 
     private static boolean allowed(@Nullable LocalPlayer player) {
         if (player == null || !enabled()) return false;
         if (!TiltPolicy.playerTilt()) return false;
         if (!BodyTiltController.shouldComputeTilt(player)) return false;
+        if (ClientPlayerTilt.apiDrivesBody()) return false;
 
         if (player.isSpectator() || player.isSleeping() || player.isPassenger()) return false;
         if (player.getAbilities().flying || player.isFallFlying()) return false;

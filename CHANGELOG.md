@@ -1,4 +1,20 @@
 # Changelog
+## 0.3.0
+
+### Added
+- Added a public API for other mods, with [documentation](https://github.com/MrLemonHog/aero-player-tilt/blob/main/docs/API.md).
+- Added the `aero_player_tilt:upright` entity type tag. Mobs and items in it are never tilted, so a data pack can turn the tilt off for them without any code.
+- Added `mobList` and `itemList` to the server config. They work as a blacklist or a whitelist and take ids, tags or a whole mod (`modid:*`)
+
+### Fixed
+- Fixed the player going through world blocks with magnetic boots.
+- Fixed a jerk when crossing an edge with magnetic boots while sneaking.
+- Fixed the camera flipping when looking straight up or down with Real Camera([Issue #1](https://github.com/MrLemonHog/aero-player-tilt/issues/1)).
+- Fixed the wrong camera position with Real Camera.
+
+### Note for mod developers
+- The API covers reading the tilt and the tilted hitbox, tilt sources, tilt settings, magnetic boots, gravity, mob tilt, events and control from the server. Everything is described in the [documentation](https://github.com/MrLemonHog/aero-player-tilt/blob/main/docs/API.md).
+
 ## 0.2.5
 
 ### Changed

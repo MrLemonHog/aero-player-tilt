@@ -31,6 +31,7 @@ public final class BodyTiltBroadcaster {
         @Nullable UUID deckId;
         boolean active;
         boolean boots;
+        com.mlh.aero_player_tilt.tilt.TiltSnapshot.Extras extras;
         long tick;
     }
 
@@ -52,6 +53,8 @@ public final class BodyTiltBroadcaster {
             boolean known = ServerTiltStore.readBodyForBroadcast(id, SAMPLE);
             boolean active = known && SAMPLE.active;
             boolean boots = active && SAMPLE.boots;
+            var extras = known ? SAMPLE.extras : com.mlh.aero_player_tilt.tilt.TiltSnapshot.Extras.NONE;
+            boolean shown = active || !extras.none();
             UUID deckId = null;
 
             if (!known) {
@@ -64,11 +67,12 @@ public final class BodyTiltBroadcaster {
 
             Sent sent = LAST_SENT.get(id);
 
-            if (sent == null && !active) continue;
+            if (sent == null && !shown) continue;
 
             boolean changed = sent == null
                     || sent.active != active
                     || sent.boots != boots
+                    || !extras.equals(sent.extras)
                     || !Objects.equals(sent.deckId, deckId)
                     || (1.0 - Math.abs(sent.value.dot(current))) > CHANGE_EPSILON
                     || gameTime - sent.tick >= KEEPALIVE_TICKS;
@@ -83,12 +87,13 @@ public final class BodyTiltBroadcaster {
             sent.deckId = deckId;
             sent.active = active;
             sent.boots = boots;
+            sent.extras = extras;
             sent.tick = gameTime;
 
             broadcast(players, subject,
-                    BodyTiltPayload.of(subject.getId(), current, active, boots, deckId, WORLD));
+                    BodyTiltPayload.of(subject.getId(), current, active, boots, deckId, WORLD, extras));
 
-            if (!active) LAST_SENT.remove(id);
+            if (!shown) LAST_SENT.remove(id);
         }
 
         LAST_SENT.keySet().removeIf(id -> server.getPlayerList().getPlayer(id) == null);
@@ -100,13 +105,13 @@ public final class BodyTiltBroadcaster {
 
         ServerTiltStore.BodySample sample = new ServerTiltStore.BodySample();
         if (!ServerTiltStore.readBodyForBroadcast(subject.getUUID(), sample)) return;
-        if (!sample.active) return;
+        if (!sample.active && sample.extras.none()) return;
 
         Quaternionf tilt = new Quaternionf();
         UUID deckId = toDeckRelative(sample, tilt);
 
-        PacketDistributor.sendToPlayer(viewer, BodyTiltPayload.of(subject.getId(), tilt, true,
-                sample.boots, deckId, new Quaternionf(sample.tilt)));
+        PacketDistributor.sendToPlayer(viewer, BodyTiltPayload.of(subject.getId(), tilt, sample.active,
+                sample.boots, deckId, new Quaternionf(sample.tilt), sample.extras));
     }
 
     @Nullable

@@ -67,6 +67,13 @@ public abstract class JumpTiltMixin implements DeckFlightAccess {
     @Unique
     private Vec3 aero$stepIntoMove = Vec3.ZERO;
 
+    @Unique
+    @Nullable
+    private Vec3 aero$gravity;
+
+    @Unique
+    private Vec3 aero$beforeJump = Vec3.ZERO;
+
     @Redirect(method = "aiStep",
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/world/entity/LivingEntity;setDeltaMovement(DDD)V",
@@ -125,6 +132,36 @@ public abstract class JumpTiltMixin implements DeckFlightAccess {
         aero$deckJumpTicks = 0;
     }
 
+    @Inject(method = "aiStep",
+            at = @At(value = "INVOKE",
+                    target = "Lnet/minecraft/world/entity/LivingEntity;jumpFromGround()V",
+                    shift = At.Shift.BEFORE))
+    private void aero$beforeJump(CallbackInfo ci) {
+        aero$beforeJump = ((LivingEntity) (Object) this).getDeltaMovement();
+    }
+
+    @Inject(method = "aiStep",
+            at = @At(value = "INVOKE",
+                    target = "Lnet/minecraft/world/entity/LivingEntity;jumpFromGround()V",
+                    shift = At.Shift.AFTER))
+    private void aero$jumpAgainstGravity(CallbackInfo ci) {
+        Vec3 pull = aero$gravity;
+        if (pull == null) return;
+
+        double strength = pull.length();
+        if (strength < 1.0e-6) return;
+
+        LivingEntity self = (LivingEntity) (Object) this;
+        Vec3 velocity = self.getDeltaMovement();
+        double jump = velocity.y - aero$beforeJump.y;
+        if (jump <= 0.0) return;
+
+        Vec3 up = pull.scale(-1.0 / strength);
+        self.setDeltaMovement(velocity.x + up.x * jump,
+                aero$beforeJump.y + up.y * jump,
+                velocity.z + up.z * jump);
+    }
+
     @Inject(method = "travel", at = @At("HEAD"))
     private void aero$captureVanillaDrag(Vec3 travelVector, CallbackInfo ci) {
         LivingEntity self = (LivingEntity) (Object) this;
@@ -133,8 +170,9 @@ public abstract class JumpTiltMixin implements DeckFlightAccess {
         aero$motionBeforeTravel = self.getDeltaMovement();
         aero$stepIntoMove = Vec3.ZERO;
         aero$posIntoMove = Vec3.ZERO;
+        aero$gravity = com.mlh.aero_player_tilt.apiimpl.ApiRegistry.gravity(self);
 
-        if (!aero$deckGravityArmed(self)) return;
+        if (aero$gravity == null && !aero$deckGravityArmed(self)) return;
 
         Level level = self.level();
         BlockPos below = self.getBlockPosBelowThatAffectsMyMovement();
@@ -176,6 +214,13 @@ public abstract class JumpTiltMixin implements DeckFlightAccess {
         LivingEntity self = (LivingEntity) (Object) this;
 
         boolean booted = Boots.holding(self);
+
+        if (!booted && aero$gravity != null) {
+            aero$deckJump = false;
+            aero$deckJumpTicks = 0;
+            aero$applyCustomGravity(self, aero$gravity);
+            return;
+        }
 
         if (!booted) aero$undoStandingPushStep(self);
 
@@ -308,6 +353,20 @@ public abstract class JumpTiltMixin implements DeckFlightAccess {
 
         self.addDeltaMovement(new Vec3(correction.x, correction.y, correction.z));
         return correction;
+    }
+
+    @Unique
+    private void aero$applyCustomGravity(LivingEntity self, Vec3 pull) {
+        if (!aero$vanillaAppliedAirGravity(self)) return;
+
+        double gravity = self.getGravity();
+        if (self.getDeltaMovement().y <= 0.0 && self.hasEffect(MobEffects.SLOW_FALLING)) {
+            gravity = Math.min(gravity, 0.01);
+        }
+        if (gravity == 0.0) return;
+
+        double damped = AERO$VERTICAL_DRAG * gravity;
+        self.addDeltaMovement(new Vec3(pull.x * damped, damped + pull.y * damped, pull.z * damped));
     }
 
     @Unique

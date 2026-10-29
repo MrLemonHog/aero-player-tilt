@@ -56,7 +56,9 @@ public class SideManager {
 
             boots = com.mlh.aero_player_tilt.client.tilt.BootsController.attached();
 
-            if (!boots) PlayerTilt.leanPartially(world);
+            if (!boots && ClientPlayerTilt.apiBody() == null) {
+                PlayerTilt.leanPartially(world);
+            }
 
             bodyActive = boots || ClientPlayerTilt.leaning(world);
 
@@ -65,6 +67,9 @@ public class SideManager {
             deckStampId = ClientPlayerTilt.currentDeckId();
             if (deckStampId != null) deckStamp = ClientPlayerTilt.currentDeck();
         }
+
+        com.mlh.aero_player_tilt.tilt.TiltSnapshot.Extras extras = ClientPlayerTilt.localExtras();
+
         if (!bodyActive) {
             boots = false;
             body.identity();
@@ -77,10 +82,10 @@ public class SideManager {
             if (server != null && mc.player != null) {
                 ServerPlayer sp = server.getPlayerList().getPlayer(mc.player.getUUID());
                 if (sp != null) {
-                    if (bodyActive) {
-                        ServerTiltStore.set(sp.getUUID(), body, true, boots,
+                    if (bodyActive || !extras.none()) {
+                        ServerTiltStore.set(sp.getUUID(), body, bodyActive, boots,
                                 sp.level().getGameTime(),
-                                deckStamp, deckStampId);
+                                deckStamp, deckStampId, extras);
                     } else {
                         ServerTiltStore.clear(sp.getUUID());
                     }
@@ -93,7 +98,7 @@ public class SideManager {
         if (mc.getConnection() == null) return;
 
         PacketDistributor.sendToServer(
-                TiltSyncPayload.from(body, bodyActive, boots, deckStampId, deckStamp));
+                TiltSyncPayload.from(body, bodyActive, boots, deckStampId, deckStamp, extras));
     }
 
     public static void beginSession() {

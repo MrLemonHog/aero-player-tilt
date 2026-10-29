@@ -136,6 +136,11 @@ public final class BootsSurface {
             return;
         }
 
+        if (!grips(level, player, hit)) {
+            DebugRayRenderer.submitRay(origin, to, 0.5f, 0.5f, 0.5f);
+            return;
+        }
+
         DebugRayRenderer.submitRay(origin, to, 0.2f, 1f, 0.5f);
 
         Direction face = hit.getDirection();
@@ -158,6 +163,11 @@ public final class BootsSurface {
         int index = face.get3DDataValue();
         if (edge < tally.edges[index]) tally.edges[index] = edge;
         if (edge < tally.edge) tally.edge = edge;
+    }
+
+    private static boolean grips(Level level, LocalPlayer player, BlockHitResult hit) {
+        return com.mlh.aero_player_tilt.apiimpl.ApiRegistry.bootsGrip(player,
+                level.getBlockState(hit.getBlockPos()), hit.getBlockPos(), hit.getDirection());
     }
 
     private static Vec3 along(Vec3 feet, Vector3d side, double radius) {
@@ -184,6 +194,11 @@ public final class BootsSurface {
 
         if (!(space instanceof ClientSubLevel deck) || deck.isRemoved()
                 || !SubLevelThresholds.passes(deck)) {
+            DebugRayRenderer.submitRay(from, to, 0.5f, 0.5f, 0.5f);
+            return false;
+        }
+
+        if (!grips(level, player, hit)) {
             DebugRayRenderer.submitRay(from, to, 0.5f, 0.5f, 0.5f);
             return false;
         }

@@ -3,8 +3,6 @@ package com.mlh.aero_player_tilt.tilt;
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.item.ItemEntity;
 import org.joml.Quaterniond;
 import org.joml.Quaterniondc;
 import org.joml.Vector3d;
@@ -33,6 +31,14 @@ public final class DeckRiderTilt {
 
     @Nullable
     public static Quaterniond orientation(@Nullable Entity entity, float partialTicks) {
+        if (com.mlh.aero_player_tilt.apiimpl.ApiRegistry.excluded(entity)) return null;
+
+        Quaterniond synced = com.mlh.aero_player_tilt.apiimpl.ApiRegistry.syncedEntityTilt(entity);
+        if (synced != null) return synced;
+
+        Quaterniond api = com.mlh.aero_player_tilt.apiimpl.ApiRegistry.entityTilt(entity, partialTicks);
+        if (api != null) return api;
+
         SubLevel deck = tiltingDeck(entity);
         if (deck == null) return null;
 
@@ -46,13 +52,23 @@ public final class DeckRiderTilt {
     }
 
     public static boolean isTilted(@Nullable Entity entity) {
-        return tiltingDeck(entity) != null;
+        if (com.mlh.aero_player_tilt.apiimpl.ApiRegistry.excluded(entity)) return false;
+
+        return com.mlh.aero_player_tilt.apiimpl.ApiRegistry.syncedEntityTilt(entity) != null
+                || com.mlh.aero_player_tilt.apiimpl.ApiRegistry.entityTilt(entity, 1.0f) != null
+                || tiltingDeck(entity) != null;
+    }
+
+    @Nullable
+    public static java.util.UUID deckId(@Nullable Entity entity) {
+        SubLevel deck = tiltingDeck(entity);
+        return deck == null ? null : deck.getUniqueId();
     }
 
     @Nullable
     private static SubLevel tiltingDeck(@Nullable Entity entity) {
         if (entity == null) return null;
-        if (!enabledFor(entity)) return null;
+        if (!EntityFilter.allows(entity)) return null;
 
         if (entity.getVehicle() != null) {
             HELD.remove(entity);
@@ -131,11 +147,5 @@ public final class DeckRiderTilt {
         return dest.set(index == 0 ? sign : 0.0,
                         index == 1 ? sign : 0.0,
                         index == 2 ? sign : 0.0);
-    }
-
-    private static boolean enabledFor(Entity entity) {
-        if (entity instanceof ItemEntity) return TiltPolicy.tiltItems();
-        if (entity instanceof LivingEntity) return TiltPolicy.tiltMobs();
-        return false;
     }
 }

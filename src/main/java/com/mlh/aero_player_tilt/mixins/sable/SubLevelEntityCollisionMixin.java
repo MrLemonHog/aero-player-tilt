@@ -90,7 +90,11 @@ public class SubLevelEntityCollisionMixin {
                                                      @Local(argsOnly = true) Entity entity) {
         if (!PlayerTilt.isTilted(entity)) return original.call(normalizedMtv, entityUp);
 
-        if (com.mlh.aero_player_tilt.tilt.Boots.holding(entity)) return original.call(normalizedMtv, entityUp);
+        if (com.mlh.aero_player_tilt.tilt.Boots.holding(entity)) {
+            double byBody = original.call(normalizedMtv, entityUp);
+            Vector3d support = com.mlh.aero_player_tilt.tilt.Boots.support(entity, new Vector3d());
+            return support == null ? byBody : Math.max(byBody, normalizedMtv.dot(support));
+        }
 
         return normalizedMtv.y;
     }

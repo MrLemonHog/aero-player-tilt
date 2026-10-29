@@ -112,7 +112,7 @@ public final class FirstPersonCompat {
     @Nullable
     private static Quaterniond drawnByThisMod(Entity entity, float partialTick) {
         Quaterniond ours = PhysicsModCompat.apply(entity, partialTick,
-                PlayerTilt.getRenderOrientation(entity, partialTick));
+                PlayerTilt.getModelOrientation(entity, partialTick));
         return ours != null && PlayerTilt.isMeaningful(ours.w) ? ours : null;
     }
 

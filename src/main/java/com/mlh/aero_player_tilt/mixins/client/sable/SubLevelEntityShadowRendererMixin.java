@@ -15,12 +15,14 @@ public class SubLevelEntityShadowRendererMixin {
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/world/entity/Entity;getEyePosition(F)Lnet/minecraft/world/phys/Vec3;"))
     private static Vec3 aeroCamSync$shadowFeetPivot(Entity entity, float partialTick) {
-        Quaterniond tilt = PlayerTilt.getRenderOrientation(entity, partialTick);
+        Quaterniond tilt = PlayerTilt.getModelOrientation(entity, partialTick);
         if (tilt == null) {
             return entity.getEyePosition(partialTick);
         }
 
-        org.joml.Vector3d up = tilt.transform(new org.joml.Vector3d(0.0, entity.getEyeHeight(), 0.0));
-        return entity.getPosition(partialTick).add(up.x, up.y, up.z);
+        double eyeHeight = entity.getEyeHeight();
+        double pin = Math.min(PlayerTilt.modelPivot(entity, partialTick), eyeHeight);
+        org.joml.Vector3d up = tilt.transform(new org.joml.Vector3d(0.0, eyeHeight - pin, 0.0));
+        return entity.getPosition(partialTick).add(up.x, up.y + pin, up.z);
     }
 }

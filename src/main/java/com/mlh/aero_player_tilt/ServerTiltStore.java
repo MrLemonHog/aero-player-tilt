@@ -21,6 +21,7 @@ public final class ServerTiltStore {
         @Nullable UUID bodyRawDeckId;
         boolean bodyActive;
         boolean bodyBoots;
+        TiltSnapshot.Extras extras = TiltSnapshot.Extras.NONE;
     }
 
     public static final class BodySample {
@@ -29,20 +30,23 @@ public final class ServerTiltStore {
         @Nullable public UUID deckId;
         public boolean active;
         public boolean boots;
+        public TiltSnapshot.Extras extras = TiltSnapshot.Extras.NONE;
     }
 
     public static void set(UUID playerId, Quaternionf bodyTilt, boolean bodyActive, long gameTime) {
-        set(playerId, bodyTilt, bodyActive, false, gameTime, null, null);
+        set(playerId, bodyTilt, bodyActive, false, gameTime, null, null, TiltSnapshot.Extras.NONE);
     }
 
     public static void set(UUID playerId, Quaternionf bodyTilt, boolean bodyActive, boolean boots,
                            long gameTime,
-                           @Nullable org.joml.Quaterniondc deck, @Nullable UUID deckId) {
+                           @Nullable org.joml.Quaterniondc deck, @Nullable UUID deckId,
+                           TiltSnapshot.Extras extras) {
         Entry entry = ENTRIES.computeIfAbsent(playerId, id -> new Entry());
 
         entry.bodyRaw.set(bodyTilt);
         entry.bodyActive = bodyActive;
         entry.bodyBoots = boots;
+        entry.extras = extras;
 
         if (deck != null && deckId != null) {
             entry.bodyRawDeck.set(deck);
@@ -52,7 +56,7 @@ public final class ServerTiltStore {
             entry.bodyRawDeckId = null;
         }
 
-        entry.body.set(new Quaterniond(bodyTilt), deck, deckId, bodyActive, boots, gameTime);
+        entry.body.set(new Quaterniond(bodyTilt), deck, deckId, bodyActive, boots, extras, gameTime);
     }
 
     public static void beginTick() {
@@ -91,6 +95,7 @@ public final class ServerTiltStore {
         dest.deckId = entry.bodyRawDeckId;
         dest.active = entry.bodyActive;
         dest.boots = entry.bodyBoots;
+        dest.extras = entry.extras;
         return true;
     }
 

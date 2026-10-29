@@ -28,7 +28,7 @@ public final class DeckTurn {
     private static double pending;
 
     public static void follow(@Nullable LocalPlayer player) {
-        if (!Config.flag(Config.TURN_WITH_DECK, true)) {
+        if (!ClientPlayerTilt.settings().turnWithDeck()) {
             standDown("off");
             return;
         }
@@ -104,7 +104,7 @@ public final class DeckTurn {
         pending = 0.0;
 
         if (player == null || turn == 0.0 || !Double.isFinite(turn)) return;
-        if (!Config.flag(Config.TURN_WITH_DECK, true)) return;
+        if (!ClientPlayerTilt.settings().turnWithDeck()) return;
 
         double strength = Config.value(Config.DECK_MOMENTUM, 1.0);
         if (strength <= 0.0) return;

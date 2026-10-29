@@ -52,7 +52,7 @@ public final class TiltPrediction {
 
     @Nullable
     public static Landing predict(LocalPlayer player) {
-        if (!Config.flag(Config.PREDICT_LANDING, true)) return null;
+        if (!ClientPlayerTilt.settings().predictLanding()) return null;
 
         long gameTime = player.level().getGameTime();
         if (gameTime == cachedTick && player.getUUID().equals(cachedPlayer)) return cached;

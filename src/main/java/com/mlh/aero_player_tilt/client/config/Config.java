@@ -310,6 +310,26 @@ public class Config {
                             "decides.")
                     .define("tiltItems", false);
 
+    public static final ModConfigSpec.EnumValue<com.mlh.aero_player_tilt.tilt.EntityFilter.Mode> MOB_LIST_MODE =
+            BUILDER.comment("Mob list mode. BLACKLIST: mobList is never tilted. WHITELIST: only\n" +
+                            "mobList is tilted. Yours only: this server has no mod.")
+                    .defineEnum("mobListMode", com.mlh.aero_player_tilt.tilt.EntityFilter.Mode.BLACKLIST);
+
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> MOB_LIST =
+            BUILDER.comment("Mob list. Mob ids, \"#\" tags or \"modid:*\", e.g.\n" +
+                            "[\"minecraft:cow\", \"#minecraft:raiders\", \"alexsmobs:*\"]")
+                    .defineListAllowEmpty("mobList", java.util.List.of(), () -> "", entry -> entry instanceof String);
+
+    public static final ModConfigSpec.EnumValue<com.mlh.aero_player_tilt.tilt.EntityFilter.Mode> ITEM_LIST_MODE =
+            BUILDER.comment("Item list mode. BLACKLIST: itemList is never tilted. WHITELIST: only\n" +
+                            "itemList is tilted. Yours only: this server has no mod.")
+                    .defineEnum("itemListMode", com.mlh.aero_player_tilt.tilt.EntityFilter.Mode.BLACKLIST);
+
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> ITEM_LIST =
+            BUILDER.comment("Item list. Dropped item ids, \"#\" tags or \"modid:*\", e.g.\n" +
+                            "[\"minecraft:diamond\", \"#minecraft:swords\"]")
+                    .defineListAllowEmpty("itemList", java.util.List.of(), () -> "", entry -> entry instanceof String);
+
     static { BUILDER.pop(); }
 
     static {

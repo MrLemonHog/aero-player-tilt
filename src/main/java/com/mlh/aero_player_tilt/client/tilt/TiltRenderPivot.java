@@ -48,7 +48,7 @@ public final class TiltRenderPivot {
         }
 
         Quaterniond tilt = PhysicsModCompat.apply(entity, partialTick,
-                PlayerTilt.getRenderOrientation(entity, partialTick));
+                PlayerTilt.getModelOrientation(entity, partialTick));
         Vec3 shift = PhysicsModCompat.untrackedShift(entity, partialTick);
 
         if (tilt == null) {
@@ -57,8 +57,9 @@ public final class TiltRenderPivot {
         }
 
         double eyeHeight = entity.getEyeHeight();
-        Vector3d pivot = tilt.transformInverse(dest.set(0.0, eyeHeight, 0.0));
-        dest.set(-pivot.x, eyeHeight - pivot.y, -pivot.z);
+        double arm = eyeHeight - Math.min(PlayerTilt.modelPivot(entity, partialTick), eyeHeight);
+        Vector3d pivot = tilt.transformInverse(dest.set(0.0, arm, 0.0));
+        dest.set(-pivot.x, arm - pivot.y, -pivot.z);
 
         Vec3 move = PhysicsModCompat.tracked(entity)
                 ? PhysicsModCompat.drift(entity, partialTick, eyeHeight).scale(-1.0)

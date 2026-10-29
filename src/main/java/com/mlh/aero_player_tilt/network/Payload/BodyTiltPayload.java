@@ -1,5 +1,6 @@
 package com.mlh.aero_player_tilt.network.Payload;
 
+import com.mlh.aero_player_tilt.tilt.TiltSnapshot;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -13,7 +14,8 @@ import java.util.UUID;
 public record BodyTiltPayload(int entityId, float qx, float qy, float qz, float qw, boolean active,
                               boolean boots,
                               @Nullable UUID deckId,
-                              float wx, float wy, float wz, float ww)
+                              float wx, float wy, float wz, float ww,
+                              TiltSnapshot.Extras extras)
         implements CustomPacketPayload {
     public static final Type<BodyTiltPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath("aero_player_tilt", "body_tilt"));
@@ -30,6 +32,7 @@ public record BodyTiltPayload(int entityId, float qx, float qy, float qz, float 
                         if (p.deckId != null) buf.writeUUID(p.deckId);
                         buf.writeFloat(p.wx); buf.writeFloat(p.wy);
                         buf.writeFloat(p.wz); buf.writeFloat(p.ww);
+                        p.extras.write(buf);
                     },
                     buf -> {
                         int entityId = buf.readVarInt();
@@ -41,14 +44,14 @@ public record BodyTiltPayload(int entityId, float qx, float qy, float qz, float 
                         float wx = buf.readFloat(), wy = buf.readFloat();
                         float wz = buf.readFloat(), ww = buf.readFloat();
                         return new BodyTiltPayload(entityId, qx, qy, qz, qw, active, boots, deckId,
-                                wx, wy, wz, ww);
+                                wx, wy, wz, ww, TiltSnapshot.Extras.read(buf));
                     }
             );
 
     public static BodyTiltPayload of(int entityId, Quaternionf q, boolean active, boolean boots,
-                                     @Nullable UUID deckId, Quaternionf world) {
+                                     @Nullable UUID deckId, Quaternionf world, TiltSnapshot.Extras extras) {
         return new BodyTiltPayload(entityId, q.x, q.y, q.z, q.w, active, boots, deckId,
-                world.x, world.y, world.z, world.w);
+                world.x, world.y, world.z, world.w, extras);
     }
 
     public Quaternionf toQuaternion() {
@@ -62,7 +65,7 @@ public record BodyTiltPayload(int entityId, float qx, float qy, float qz, float 
     public static void handle(BodyTiltPayload payload, IPayloadContext ctx) {
         ctx.enqueueWork(() -> com.mlh.aero_player_tilt.client.tilt.ClientPlayerTilt.accept(
                 payload.entityId(), payload.toQuaternion(), payload.toWorldQuaternion(),
-                payload.deckId(), payload.active(), payload.boots()));
+                payload.deckId(), payload.active(), payload.boots(), payload.extras()));
     }
 
     @Override

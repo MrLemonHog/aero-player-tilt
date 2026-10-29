@@ -6,7 +6,7 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public class NetworkHandler {
-    private static final String CHANNEL_VERSION = "8";
+    private static final String CHANNEL_VERSION = "9";
 
     public static void register(RegisterPayloadHandlersEvent event) {
         final PayloadRegistrar registrar = event.registrar(CHANNEL_VERSION)
@@ -34,6 +34,18 @@ public class NetworkHandler {
                 BodyTiltPayload.TYPE,
                 BodyTiltPayload.CODEC,
                 BodyTiltPayload::handle
+        );
+
+        registrar.playToClient(
+                com.mlh.aero_player_tilt.network.Payload.ApiControlPayload.TYPE,
+                com.mlh.aero_player_tilt.network.Payload.ApiControlPayload.CODEC,
+                com.mlh.aero_player_tilt.network.Payload.ApiControlPayload::handle
+        );
+
+        registrar.playToClient(
+                com.mlh.aero_player_tilt.network.Payload.EntityTiltPayload.TYPE,
+                com.mlh.aero_player_tilt.network.Payload.EntityTiltPayload.CODEC,
+                com.mlh.aero_player_tilt.network.Payload.EntityTiltPayload::handle
         );
     }
 }

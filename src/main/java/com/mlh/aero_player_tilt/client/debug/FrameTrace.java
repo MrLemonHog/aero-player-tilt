@@ -108,6 +108,9 @@ public final class FrameTrace {
     private static Vec3 lastCamPos;
     private static Vec3 lastDrawnPos;
     private static boolean lastOnGround = true;
+
+    @javax.annotation.Nullable
+    private static net.minecraft.world.entity.Pose lastPose;
     private static double lastY;
 
     private static final Quaterniond lastInterpolated = new Quaterniond();
@@ -184,7 +187,7 @@ public final class FrameTrace {
                         + " | floor tgt=%s hits=%d share=%.2f hold=%d ht=%.1f air=%d land=%s"
                         + " | boots %s"
                         + " | deck trk=%s std=%s foot=%s sway=%s"
-                        + " | plr g=%d y=%.4f dy=%s dmy=%s",
+                        + " | plr g=%d y=%.4f dy=%s dmy=%s pose=%s eye=%.3f shift=%d mv=%s",
                 frame,
                 mc.level.getGameTime(), partialTick, deltaTicks,
                 fmt(dInt), fmt(dRaw), fmt(dAcs), fmt(camStep),
@@ -209,7 +212,9 @@ public final class FrameTrace {
                 StandingDeck.debug().replace(' ', '_'),
                 com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.debug(player),
                 player.onGround() ? 1 : 0, player.getY(),
-                fmt(player.getY() - lastY), fmt(motion.y));
+                fmt(player.getY() - lastY), fmt(motion.y),
+                player.getPose(), player.getEyeHeight(), player.isShiftKeyDown() ? 1 : 0,
+                fmt(motion.horizontalDistance()));
         } catch (RuntimeException broken) {
             if (!warnedFormat) {
                 warnedFormat = true;
@@ -224,7 +229,9 @@ public final class FrameTrace {
 
         double stageStep = Math.max(dInt, Math.max(dRaw, dAcs));
 
-        if (!lastOnGround && player.onGround()) {
+        if (lastPose != null && lastPose != player.getPose()) {
+            arm("pose " + lastPose + " -> " + player.getPose());
+        } else if (!lastOnGround && player.onGround()) {
             arm("landed");
         } else if (stageStep > jumpDegrees() && lastStageStep <= jumpDegrees()) {
             arm(String.format(Locale.ROOT, "tilt jumped %s deg in one frame (int=%s raw=%s acs=%s)",
@@ -236,6 +243,7 @@ public final class FrameTrace {
         lastDrawnPos = drawnPos;
         lastStageStep = stageStep;
         lastOnGround = player.onGround();
+        lastPose = player.getPose();
         lastY = player.getY();
 
         if (pendingTail >= 0 && --pendingTail < 0) dump();

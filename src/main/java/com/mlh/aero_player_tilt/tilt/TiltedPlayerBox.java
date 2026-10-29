@@ -23,6 +23,16 @@ public final class TiltedPlayerBox {
 
     private static final double INSIDE_SKIN = 1.0E-7;
 
+    private static final double STEEP_UP_Y = Math.cos(Math.toRadians(45.0));
+
+    private static final double WORLD_SKIN = 1.0E-3;
+
+    private static final double WORLD_STEP = 0.1;
+
+    private static final double WORLD_EASE_OUT = 0.08;
+
+    private static final int[] WORLD_AXES = {1, 0, 2};
+
     public static void logDecision(String branch, Entity entity, VoxelShape shape,
                                    boolean vanilla, @Nullable Boolean tilted) {
         if (!(entity instanceof net.minecraft.world.entity.player.Player)) return;
@@ -65,6 +75,161 @@ public final class TiltedPlayerBox {
 
         return new AABB(center.x - ex, center.y - ey, center.z - ez,
                 center.x + ex, center.y + ey, center.z + ez);
+    }
+
+    @Nullable
+    public static net.minecraft.world.phys.Vec3 collideWithWorld(Entity entity, net.minecraft.world.phys.Vec3 motion) {
+        OrientedBoundingBox3d body = steepBody(entity);
+        if (body == null) return null;
+
+        Vector3d start = new Vector3d(body.getPosition());
+        Vector3d moved = new Vector3d();
+        int steps = Math.max(1, Math.min(10, (int) Math.ceil(motion.length() / WORLD_STEP)));
+        double[] step = {motion.x / steps, motion.y / steps, motion.z / steps};
+
+        net.minecraft.world.phys.Vec3 velocity = entity.getDeltaMovement();
+        double[] carried = {velocity.x, velocity.y, velocity.z};
+        boolean touched = false;
+
+        double depth = depth(entity, body, start, moved);
+
+        for (int i = 0; i < steps; i++) {
+            for (int axis : WORLD_AXES) {
+                if (step[axis] == 0.0) continue;
+
+                moved.setComponent(axis, moved.get(axis) + step[axis]);
+                double deeper = depth(entity, body, start, moved);
+                if (deeper <= depth + 1.0e-6) {
+                    depth = deeper;
+                    continue;
+                }
+
+                moved.setComponent(axis, moved.get(axis) - step[axis]);
+                step[axis] = 0.0;
+                carried[axis] = 0.0;
+                touched = true;
+            }
+        }
+
+        double easeOut = WORLD_EASE_OUT;
+        for (int pass = 0; pass < 4 && depth > 0.0 && easeOut > 1.0e-6; pass++) {
+            body.getPosition().set(start).add(moved);
+            Vector3d push = worldPush(entity, body);
+            if (push == null) break;
+
+            double out = Math.min(push.length(), easeOut);
+            easeOut -= out;
+            moved.fma(out / push.length(), push);
+            double eased = depth(entity, body, start, moved);
+            if (eased >= depth) {
+                moved.fma(-out / push.length(), push);
+                break;
+            }
+            depth = eased;
+            touched = true;
+        }
+
+        if (!touched) return motion;
+
+        entity.setDeltaMovement(carried[0], carried[1], carried[2]);
+        return new net.minecraft.world.phys.Vec3(moved.x, moved.y, moved.z);
+    }
+
+    public static double worldDepth(Entity entity, Quaterniond tilt, SubLevel deck) {
+        Quaterniond orientation = BoxOrientation.forBox(tilt, deck.lastPose(), new Quaterniond());
+        if (orientation.transform(new Vector3d(0.0, 1.0, 0.0)).y > STEEP_UP_Y) return 0.0;
+
+        AABB bounds = entity.getBoundingBox();
+        Vector3d center = orientation.transform(new Vector3d(0.0, bounds.getYsize() / 2.0, 0.0));
+        center.add(entity.getX(), entity.getY(), entity.getZ());
+
+        OrientedBoundingBox3d body = new OrientedBoundingBox3d(
+                center.x, center.y, center.z,
+                Math.max(0.0, bounds.getXsize() - 2.0 * WORLD_SKIN),
+                Math.max(0.0, bounds.getYsize() - 2.0 * WORLD_SKIN),
+                Math.max(0.0, bounds.getZsize() - 2.0 * WORLD_SKIN),
+                orientation, ((LevelExtension) entity.level()).sable$getJOMLSink());
+        Vector3d push = worldPush(entity, body);
+        return push == null ? 0.0 : push.length();
+    }
+
+    public static boolean clearOfWorld(Entity entity, Vector3d feet, Vector3d up, double width, double height) {
+        Quaterniond orientation = new Quaterniond().rotationTo(0.0, 1.0, 0.0, up.x, up.y, up.z);
+        Vector3d center = new Vector3d(up).mul(height / 2.0).add(feet);
+        OrientedBoundingBox3d box = new OrientedBoundingBox3d(center.x, center.y, center.z,
+                width, height, width, orientation, ((LevelExtension) entity.level()).sable$getJOMLSink());
+        return worldPush(entity, box) == null;
+    }
+
+    private static double depth(Entity entity, OrientedBoundingBox3d body, Vector3d start, Vector3d moved) {
+        body.getPosition().set(start).add(moved);
+        Vector3d push = worldPush(entity, body);
+        return push == null ? 0.0 : push.length();
+    }
+
+    @Nullable
+    public static Boolean collidesWithWorldAnew(Entity entity, double x, double y, double z) {
+        OrientedBoundingBox3d body = steepBody(entity);
+        if (body == null) return null;
+
+        if (worldPush(entity, body) != null) return Boolean.FALSE;
+
+        body.getPosition().add(x - entity.getX(), y - entity.getY(), z - entity.getZ());
+        return worldPush(entity, body) != null;
+    }
+
+    @Nullable
+    private static OrientedBoundingBox3d steepBody(Entity entity) {
+        Quaterniond orientation = boxOrientation(entity);
+        if (orientation == null || orientation.transform(new Vector3d(0.0, 1.0, 0.0)).y > STEEP_UP_Y) return null;
+
+        AABB bounds = entity.getBoundingBox();
+        Vector3d center = orientation.transform(new Vector3d(0.0, bounds.getYsize() / 2.0, 0.0));
+        center.add(entity.getX(), entity.getY(), entity.getZ());
+
+        return new OrientedBoundingBox3d(
+                center.x, center.y, center.z,
+                Math.max(0.0, bounds.getXsize() - 2.0 * WORLD_SKIN),
+                Math.max(0.0, bounds.getYsize() - 2.0 * WORLD_SKIN),
+                Math.max(0.0, bounds.getZsize() - 2.0 * WORLD_SKIN),
+                orientation, ((LevelExtension) entity.level()).sable$getJOMLSink());
+    }
+
+    @Nullable
+    private static Vector3d worldPush(Entity entity, OrientedBoundingBox3d body) {
+        Vector3d center = body.getPosition();
+        Vector3d half = new Vector3d(body.getDimensions()).mul(0.5);
+        Quaterniond orientation = new Quaterniond(body.getOrientation());
+
+        Vector3d ax = orientation.transform(new Vector3d(half.x, 0.0, 0.0));
+        Vector3d ay = orientation.transform(new Vector3d(0.0, half.y, 0.0));
+        Vector3d az = orientation.transform(new Vector3d(0.0, 0.0, half.z));
+        double ex = Math.abs(ax.x) + Math.abs(ay.x) + Math.abs(az.x);
+        double ey = Math.abs(ax.y) + Math.abs(ay.y) + Math.abs(az.y);
+        double ez = Math.abs(ax.z) + Math.abs(ay.z) + Math.abs(az.z);
+        AABB around = new AABB(center.x - ex, center.y - ey, center.z - ez, center.x + ex, center.y + ey, center.z + ez);
+
+        LevelReusedVectors sink = ((LevelExtension) entity.level()).sable$getJOMLSink();
+        OrientedBoundingBox3d cube = new OrientedBoundingBox3d(sink);
+        cube.getOrientation().identity();
+
+        Vector3d mtv = new Vector3d();
+        Vector3d deepest = null;
+
+        for (VoxelShape shape : entity.level().getCollisions(entity, around)) {
+            for (AABB box : shape.toAabbs()) {
+                cube.getPosition().set((box.minX + box.maxX) / 2.0, (box.minY + box.maxY) / 2.0, (box.minZ + box.maxZ) / 2.0);
+                cube.getDimensions().set(box.getXsize(), box.getYsize(), box.getZsize());
+
+                OrientedBoundingBox3d.sat(body, cube, mtv);
+                if (mtv.lengthSquared() <= 0.0 || mtv.x() == Double.MAX_VALUE
+                        || mtv.y() == Double.MAX_VALUE || mtv.z() == Double.MAX_VALUE) continue;
+
+                if (deepest == null || mtv.lengthSquared() > deepest.lengthSquared()) deepest = new Vector3d(mtv);
+            }
+        }
+
+        return deepest;
     }
 
     @Nullable

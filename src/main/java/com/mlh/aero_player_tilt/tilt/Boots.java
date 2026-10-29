@@ -47,6 +47,11 @@ public final class Boots {
         return new Quaterniond().rotationTo(up, face).mul(tilt).normalize();
     }
 
+    public static boolean wraps(@Nullable Entity entity) {
+        if (!holding(entity)) return false;
+        return !entity.level().isClientSide || com.mlh.aero_player_tilt.client.tilt.BootsController.flips();
+    }
+
     public static boolean adrift(@Nullable Entity entity) {
         return entity instanceof Player player && player.level().isClientSide
                 && com.mlh.aero_player_tilt.client.tilt.ClientPlayerTilt.isAdrift(player);
@@ -80,8 +85,13 @@ public final class Boots {
         return support(entity, dest);
     }
 
+    private static volatile double grip = 1.0;
+
+    public static void grip(double value) {
+        grip = value;
+    }
+
     public static double pull() {
-        return com.mlh.aero_player_tilt.client.config.Config.value(
-                com.mlh.aero_player_tilt.client.config.Config.MAGNETIC_PULL, 1.0);
+        return grip;
     }
 }

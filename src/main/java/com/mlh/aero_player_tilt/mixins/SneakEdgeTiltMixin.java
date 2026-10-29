@@ -24,6 +24,7 @@ public abstract class SneakEdgeTiltMixin {
         Player self = (Player) (Object) this;
         Quaterniond tilt = PlayerTilt.getRenderOrientation(self, 1.0f);
         if (tilt == null) return original.call(movement, type);
+        if (Boots.wraps(self)) return movement;
 
         Vector3d up = Boots.support(self, new Vector3d());
         if (up == null) return original.call(movement, type);

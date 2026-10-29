@@ -16,8 +16,11 @@ public class EntitySubLevelUtilMixin {
     private static void aeroCamSync$playerBodyTilt(Entity entity, float partialTicks,
                                                    CallbackInfoReturnable<Quaterniondc> cir) {
         Quaterniond tilt = PlayerTilt.getOrientation(entity, partialTicks);
-        if (tilt != null) {
-            cir.setReturnValue(com.mlh.aero_player_tilt.tilt.Boots.footing(entity, tilt));
+        if (tilt == null) return;
+
+        Quaterniond footed = com.mlh.aero_player_tilt.tilt.Boots.footing(entity, tilt);
+        if (PlayerTilt.isVisible(footed.w) || com.mlh.aero_player_tilt.tilt.Boots.holding(entity)) {
+            cir.setReturnValue(footed);
         }
     }
 

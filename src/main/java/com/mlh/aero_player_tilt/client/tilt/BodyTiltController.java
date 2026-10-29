@@ -127,8 +127,8 @@ public final class BodyTiltController {
         else holdTicks = 0f;
 
         float budget = (float) (airborneOverDeck
-                ? Config.value(Config.AIRBORNE_HOLD_TICKS, 60.0)
-                : Config.value(Config.HOLD_TICKS, 5.0));
+                ? ClientPlayerTilt.settings().airborneHoldTicks()
+                : ClientPlayerTilt.settings().holdTicks());
 
         boolean holding = hold && holdTicks <= budget;
 
@@ -187,8 +187,8 @@ public final class BodyTiltController {
         clampTilt(target, maxAngle);
 
         float halfLife = (surfaceNormal != null)
-                ? Config.SMOOTH_SPEED.get().floatValue()
-                : Config.SMOOTH_SPEED_EXIT.get().floatValue();
+                ? (float) ClientPlayerTilt.settings().smoothIn()
+                : (float) ClientPlayerTilt.settings().smoothOut();
 
         float before = angleTo(bodyTilt, target);
         bodyTilt.slerp(target, smoothingStep(deltaTime, halfLife));
@@ -272,7 +272,7 @@ public final class BodyTiltController {
     private static final float AIM_STABLE_COS = 0.9994f;
 
     private static float aimSpeedLimit(float deltaTime) {
-        return smoothingStep(deltaTime, Config.SMOOTH_SPEED.get().floatValue());
+        return smoothingStep(deltaTime, (float) ClientPlayerTilt.settings().smoothIn());
     }
 
     private static float ease(float progress) {

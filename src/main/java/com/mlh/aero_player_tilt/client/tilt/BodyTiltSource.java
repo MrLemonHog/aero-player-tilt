@@ -27,7 +27,7 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
     public boolean appliesTo(TiltContext context) {
         if (!claimsFrame(context.player(), context.partialTick())) return standDown();
 
-        if (PlayerTilt.isTilted(context.player())) saidGoodbye = false;
+        if (ClientPlayerTilt.localDrawn()) saidGoodbye = false;
 
         return true;
     }
@@ -35,10 +35,10 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
     private static boolean claimsFrame(Player player, float partialTick) {
         if (player.getVehicle() != null) return false;
 
-        if (PlayerTilt.isTilted(player)) return true;
+        if (ClientPlayerTilt.localDrawn()) return true;
 
         return claiming && !saidGoodbye
-                && PlayerTilt.getOrientation(player, partialTick) != null;
+                && PlayerTilt.getModelOrientation(player, partialTick) != null;
     }
 
     @Override
@@ -61,7 +61,7 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
     @Nullable
     public Quaternionf tilt(TiltContext context) {
         Quaterniond body = PhysicsModCompat.apply(context.player(), context.partialTick(),
-                PlayerTilt.getOrientation(context.player(), context.partialTick()));
+                PlayerTilt.getModelOrientation(context.player(), context.partialTick()));
         if (body == null) {
             claiming = false;
             saidGoodbye = false;
@@ -70,7 +70,7 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
 
         boolean booted = com.mlh.aero_player_tilt.tilt.Boots.holding(context.player());
 
-        Quaternionf lean = booted
+        Quaternionf lean = booted || ClientPlayerTilt.free(context.player())
                 ? MathUtils.toQuaternionf(body)
                 : levelOff(MathUtils.toQuaternionf(body));
 
@@ -94,7 +94,7 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
 
         Quaternionf handed = spendTakeOver(look, lean, context.deltaTicks());
 
-        saidGoodbye = !PlayerTilt.isTilted(context.player());
+        saidGoodbye = !ClientPlayerTilt.localDrawn();
 
         com.mlh.aero_player_tilt.client.debug.FrameTrace.handed(
                 handed, takeOverDegrees(), takeOverLeft);
@@ -105,12 +105,12 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
     }
 
     private static boolean rotatesCamera() {
-        return Config.flag(Config.ROTATE_CAMERA, true);
+        return ClientPlayerTilt.apiCamera();
     }
 
     public static boolean turnsWithSway(Player player, float partialTick) {
         return !com.mlh.aero_player_tilt.tilt.Boots.holding(player)
-                && Config.flag(Config.TURN_WITH_DECK, true)
+                && ClientPlayerTilt.settings().turnWithDeck()
                 && PhysicsModCompat.sways(player, partialTick);
     }
 
@@ -131,8 +131,8 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
         if (PhysicsModCompat.drift(player, partialTick, 0.0) != Vec3.ZERO) return null;
 
         Vec3 feet = player.getPosition(partialTick).add(TiltRenderPivot.arcDrift(player, partialTick));
-        Vector3d head = new Quaterniond(framePose.x, framePose.y, framePose.z, framePose.w)
-                .transform(new Vector3d(0.0, player.getEyeHeight(), 0.0));
+        Vector3d head = head(new Quaterniond(framePose.x, framePose.y, framePose.z, framePose.w),
+                player.getEyeHeight(), PlayerTilt.modelPivot(player, partialTick));
         Vec3 camera = feet.add(head.x, head.y, head.z);
 
         Vec3 eye = AcsBridge.ACS.withVanillaEye(
@@ -158,7 +158,7 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
                     () -> Sable.HELPER.getEyePositionInterpolated(player, partialTick));
             Vec3 feet = vanillaFeet.add(TiltRenderPivot.arcDrift(player, partialTick));
 
-            Vector3d head = lean.transform(new Vector3d(0.0, eyeHeight, 0.0));
+            Vector3d head = head(new Quaterniond(lean), eyeHeight, PlayerTilt.modelPivot(player, partialTick));
             Vector3d boom = view.transform(new Vector3d(
                     vanillaCameraPos.x - eye.x,
                     vanillaCameraPos.y - eye.y,
@@ -186,7 +186,7 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
             modelFeet = vanillaFeet;
         }
 
-        Vector3d head = lean.transform(new Vector3d(0.0, eyeHeight, 0.0));
+        Vector3d head = head(new Quaterniond(lean), eyeHeight, PlayerTilt.modelPivot(player, partialTick));
 
         Vector3d boom = view.transform(new Vector3d(
                 vanillaCameraPos.x - vanillaFeet.x - eyeDrift.x,
@@ -194,6 +194,11 @@ public final class BodyTiltSource implements TiltSource, AcsConditions {
                 vanillaCameraPos.z - vanillaFeet.z - eyeDrift.z));
 
         return modelFeet.add(head.x + boom.x, head.y + boom.y, head.z + boom.z);
+    }
+
+    private static Vector3d head(Quaterniond lean, double eyeHeight, double pivot) {
+        double pin = Math.min(pivot, eyeHeight);
+        return lean.transform(new Vector3d(0.0, eyeHeight - pin, 0.0)).add(0.0, pin, 0.0);
     }
 
     private static final double MAX_OFFSET = 0.5;

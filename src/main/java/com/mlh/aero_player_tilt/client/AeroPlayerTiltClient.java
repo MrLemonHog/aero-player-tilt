@@ -100,6 +100,7 @@ public class AeroPlayerTiltClient {
     static void onClientDisconnected(ClientPlayerNetworkEvent.LoggingOut event) {
         pendingHandshake = false;
         ClientPlayerTilt.clear();
+        com.mlh.aero_player_tilt.apiimpl.ApiRegistry.clearServerControl();
         com.mlh.aero_player_tilt.client.tilt.TiltPrediction.forget();
         com.mlh.aero_player_tilt.client.tilt.ReplayAnchor.clear();
         com.mlh.aero_player_tilt.client.utils.SubLevelTracker.forgetDeck();

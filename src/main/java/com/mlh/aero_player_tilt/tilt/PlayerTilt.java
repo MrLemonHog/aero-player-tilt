@@ -133,6 +133,28 @@ public final class PlayerTilt {
         return null;
     }
 
+    @Nullable
+    public static Quaterniond getModelOrientation(@Nullable Entity entity, float partialTicks) {
+        Quaterniond body = getRenderOrientation(entity, partialTicks);
+        Quaterniond offset = modelOffset(entity, partialTicks);
+        if (offset == null) return body;
+
+        return body == null ? offset : body.mul(offset).normalize();
+    }
+
+    @Nullable
+    public static Quaterniond modelOffset(@Nullable Entity entity, float partialTicks) {
+        if (!(entity instanceof Player player) || !player.level().isClientSide || !appliesTo(player)) return null;
+
+        return com.mlh.aero_player_tilt.client.tilt.ClientPlayerTilt.modelOffset(player, partialTicks);
+    }
+
+    public static float modelPivot(@Nullable Entity entity, float partialTicks) {
+        if (!(entity instanceof Player player) || !player.level().isClientSide || !appliesTo(player)) return 0f;
+
+        return com.mlh.aero_player_tilt.client.tilt.ClientPlayerTilt.pivot(player, partialTicks);
+    }
+
     public static boolean isTilted(@Nullable Entity entity) {
         return isRenderTilted(entity);
     }

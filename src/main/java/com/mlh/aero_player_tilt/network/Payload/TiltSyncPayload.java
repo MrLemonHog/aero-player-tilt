@@ -1,6 +1,7 @@
 package com.mlh.aero_player_tilt.network.Payload;
 
 import com.mlh.aero_player_tilt.ServerTiltStore;
+import com.mlh.aero_player_tilt.tilt.TiltSnapshot;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -17,7 +18,8 @@ import java.util.UUID;
 public record TiltSyncPayload(float bx, float by, float bz, float bw, boolean bodyActive,
                               boolean boots,
                               @Nullable UUID deckId,
-                              float dx, float dy, float dz, float dw)
+                              float dx, float dy, float dz, float dw,
+                              TiltSnapshot.Extras extras)
         implements CustomPacketPayload {
     public static final Type<TiltSyncPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath("aero_player_tilt", "tilt_sync"));
@@ -36,6 +38,8 @@ public record TiltSyncPayload(float bx, float by, float bz, float bw, boolean bo
                             buf.writeFloat(p.dx); buf.writeFloat(p.dy);
                             buf.writeFloat(p.dz); buf.writeFloat(p.dw);
                         }
+
+                        p.extras.write(buf);
                     },
                     buf -> {
                         float bx = buf.readFloat(), by = buf.readFloat();
@@ -45,24 +49,26 @@ public record TiltSyncPayload(float bx, float by, float bz, float bw, boolean bo
 
                         if (!buf.readBoolean()) {
                             return new TiltSyncPayload(bx, by, bz, bw, active, boots,
-                                    null, 0f, 0f, 0f, 1f);
+                                    null, 0f, 0f, 0f, 1f, TiltSnapshot.Extras.read(buf));
                         }
 
                         UUID deckId = buf.readUUID();
                         return new TiltSyncPayload(bx, by, bz, bw, active, boots, deckId,
-                                buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat());
+                                buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat(),
+                                TiltSnapshot.Extras.read(buf));
                     }
             );
 
     public static TiltSyncPayload from(Quaternionf body, boolean bodyActive, boolean boots,
-                                       @Nullable UUID deckId, @Nullable Quaterniondc deck) {
+                                       @Nullable UUID deckId, @Nullable Quaterniondc deck,
+                                       TiltSnapshot.Extras extras) {
         if (deckId == null || deck == null) {
             return new TiltSyncPayload(body.x, body.y, body.z, body.w, bodyActive, boots,
-                    null, 0f, 0f, 0f, 1f);
+                    null, 0f, 0f, 0f, 1f, extras);
         }
 
         return new TiltSyncPayload(body.x, body.y, body.z, body.w, bodyActive, boots, deckId,
-                (float) deck.x(), (float) deck.y(), (float) deck.z(), (float) deck.w());
+                (float) deck.x(), (float) deck.y(), (float) deck.z(), (float) deck.w(), extras);
     }
 
     public Quaternionf bodyQuaternion() {
@@ -77,16 +83,16 @@ public record TiltSyncPayload(float bx, float by, float bz, float bw, boolean bo
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
 
-            if (!payload.bodyActive()) {
+            if (!payload.bodyActive() && payload.extras().none()) {
                 ServerTiltStore.clear(player.getUUID());
                 return;
             }
 
             ServerTiltStore.set(player.getUUID(),
-                    payload.bodyQuaternion(), true, payload.boots(),
+                    payload.bodyQuaternion(), payload.bodyActive(), payload.boots(),
                     player.level().getGameTime(),
                     payload.deckId() == null ? null : payload.deckQuaternion(),
-                    payload.deckId());
+                    payload.deckId(), payload.extras());
         });
     }
 

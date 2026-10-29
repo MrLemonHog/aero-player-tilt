@@ -33,6 +33,7 @@ public class EntityRenderPivotMixin {
                                                      PoseStack poseStack, MultiBufferSource buffer,
                                                      int packedLight, CallbackInfo ci) {
         aero$snap.zero();
+        if (com.mlh.aero_player_tilt.client.compat.RealCameraCompat.drawsSelf(entity)) return;
 
         Vector3d correction = TiltRenderPivot.correction(entity, partialTicks, new Vector3d());
         if (correction != null) {
@@ -75,6 +76,7 @@ public class EntityRenderPivotMixin {
             poseStack.translate(-aero$snap.x, -aero$snap.y, -aero$snap.z);
             aero$snap.zero();
         }
+        if (com.mlh.aero_player_tilt.client.compat.RealCameraCompat.drawsSelf(entity)) return;
 
         Vector3d correction = TiltRenderPivot.correction(entity, partialTicks, new Vector3d());
         if (correction == null) return;

@@ -1,5 +1,8 @@
 package com.mlh.aero_player_tilt.client.tilt;
 
+import com.mlh.aero_player_tilt.api.PlayerTiltApi;
+import com.mlh.aero_player_tilt.api.PlayerTiltApi.TiltContext;
+import com.mlh.aero_player_tilt.apiimpl.ApiRegistry;
 import com.mlh.aero_player_tilt.client.config.Config;
 import com.mlh.aero_player_tilt.tilt.DeckFrame;
 import com.mlh.aero_player_tilt.tilt.PlayerTilt;
@@ -9,6 +12,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import org.joml.Quaterniond;
 import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 import javax.annotation.Nullable;
 import java.util.Map;
@@ -78,7 +82,7 @@ public final class ClientPlayerTilt {
                     ? null
                     : frameNow(mc.level, smoother.frameId(), partialTicks);
 
-            smoother.advance(target, snapshot.isBooted(), deckId, oldFrame, newFrame,
+            smoother.advance(target, snapshot.isBooted() || snapshot.extras().free(), deckId, oldFrame, newFrame,
                     halfLife, deltaTicks);
         });
 
@@ -141,6 +145,9 @@ public final class ClientPlayerTilt {
     private static boolean localActive() {
         if (!localAllowed()) return false;
 
+        Quaterniond api = apiBody();
+        if (api != null) return PlayerTilt.isVisible(api.w);
+
         return BootsController.attached()
                 || leaning(new Quaterniond(BodyTiltController.getRawTilt()));
     }
@@ -173,6 +180,12 @@ public final class ClientPlayerTilt {
             return;
         }
 
+        Quaterniond api = apiBody();
+        if (api != null) {
+            LOCAL.set(api, PlayerTilt.isVisible(api.w), gameTime);
+            return;
+        }
+
         Quaternionf tilt = BodyTiltController.getRawTilt();
         boolean boots = BootsController.attached();
 
@@ -180,7 +193,7 @@ public final class ClientPlayerTilt {
         LOCAL.set(new Quaterniond(tilt),
                 carrier != null ? new Quaterniond(carrier) : null,
                 BodyTiltController.getCarrierId(),
-                boots || leaning(new Quaterniond(tilt)), boots, gameTime);
+                boots || leaning(new Quaterniond(tilt)), boots, TiltSnapshot.Extras.NONE, gameTime);
     }
 
     public static boolean isBooted(Player player) {
@@ -231,6 +244,14 @@ public final class ClientPlayerTilt {
     private static Quaterniond local(Player player, float partialTicks) {
         if (!localAllowed()) return null;
 
+        Quaterniond api = apiBody();
+        return api != null ? api : own();
+    }
+
+    @Nullable
+    private static Quaterniond own() {
+        if (!localAllowed()) return null;
+
         Quaterniond raw = new Quaterniond(BodyTiltController.getRawTilt());
 
         if (BootsController.attached()) {
@@ -240,8 +261,192 @@ public final class ClientPlayerTilt {
         return PlayerTilt.leanPartially(com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.steadyLean(raw));
     }
 
+    private static final double API_SETTLED = Math.toRadians(0.5);
+
+    private static final double HUSH_HALF_LIVES = 4.0;
+
+    private static double hush;
+
+    @Nullable
+    private static Quaterniond apiApplied;
+
+    private static PlayerTiltApi.Tilt apiShape = PlayerTiltApi.Tilt.of(new Quaternionf());
+
+    private static float apiPivot;
+
+    @Nullable
+    private static String apiDriver;
+
+    @Nullable
+    private static Vector3f surface;
+
+    private static PlayerTiltApi.TiltSettings settings = PlayerTiltApi.TiltSettings.DEFAULT;
+
+    public static void resolveSettings(Player player) {
+        PlayerTiltApi.TiltSettings configured = configured();
+        PlayerTiltApi.TiltSettings tuned = ApiRegistry.resolveSettings(player, configured);
+        settings = tuned != null ? tuned : configured;
+    }
+
+    public static PlayerTiltApi.TiltSettings settings() {
+        return settings;
+    }
+
+    private static PlayerTiltApi.TiltSettings configured() {
+        double minNormalY = Math.clamp(com.mlh.aero_player_tilt.tilt.TiltPolicy.configuredMinNormalY(), -1.0, 1.0);
+        return new PlayerTiltApi.TiltSettings(
+                Config.value(Config.SMOOTH_SPEED, 1.7),
+                Config.value(Config.SMOOTH_SPEED_EXIT, 4.0),
+                Config.value(Config.HOLD_TICKS, 5.0),
+                Config.value(Config.AIRBORNE_HOLD_TICKS, 60.0),
+                Config.flag(Config.PREDICT_LANDING, true),
+                Math.toDegrees(Math.acos(minNormalY)),
+                com.mlh.aero_player_tilt.tilt.TiltPolicy.configuredTiltMultiplier(),
+                Config.flag(Config.ROTATE_CAMERA, true),
+                Config.flag(Config.TURN_WITH_DECK, true),
+                Config.flag(Config.GRIP_SLOPES, false));
+    }
+
+    public static void surface(@Nullable Vector3f normal) {
+        surface = normal == null ? null : new Vector3f(normal);
+    }
+
+    @Nullable
+    public static Vector3f surface() {
+        return surface == null ? null : new Vector3f(surface);
+    }
+
+    public static void apiFrame(Player player, float partialTick, float deltaTicks) {
+        hushFrame(deltaTicks);
+
+        Quaterniond own = own();
+        if (own == null) {
+            apiApplied = null;
+            apiDriver = null;
+            apiPivot = 0f;
+            return;
+        }
+
+        ApiRegistry.Claim claim = ApiRegistry.resolve(
+                new TiltContext(player, partialTick, deltaTicks, new Quaternionf(own), surface()));
+
+        if (claim != null) {
+            Quaterniond tilt = new Quaterniond(claim.tilt().rotation()).normalize();
+            if (!claim.tilt().free()) PlayerTilt.clampToWalkable(PlayerTilt.dropTwist(tilt));
+
+            apiApplied = tilt;
+            apiShape = claim.tilt();
+            apiPivot = claim.tilt().pivot();
+            apiDriver = claim.modId();
+            return;
+        }
+
+        apiDriver = null;
+        if (apiApplied == null) return;
+
+        double halfLife = settings.smoothOut();
+        double step = halfLife <= 0.0 ? 1.0 : 1.0 - Math.pow(0.5, deltaTicks / halfLife);
+        apiApplied.slerp(own, step).normalize();
+        apiPivot *= (float) (1.0 - step);
+
+        double dot = Math.min(1.0, Math.abs(apiApplied.dot(own)));
+        if (2.0 * Math.acos(dot) < API_SETTLED && apiPivot < 1.0e-3f) {
+            apiApplied = null;
+            apiPivot = 0f;
+        }
+    }
+
+    @Nullable
+    public static Quaterniond apiBody() {
+        return apiApplied == null || !apiShape.hitbox() ? null : new Quaterniond(apiApplied);
+    }
+
+    private static void hushFrame(float deltaTicks) {
+        boolean suppressed = ApiRegistry.suppressed();
+        double halfLife = suppressed ? settings.smoothOut() : settings.smoothIn();
+        double step = halfLife <= 0.0 ? 1.0 : deltaTicks / (HUSH_HALF_LIVES * halfLife);
+        hush = Math.clamp(hush + (suppressed ? step : -step), 0.0, 1.0);
+    }
+
+    @Nullable
+    private static Quaterniond apiModelOffset() {
+        boolean shaped = apiApplied != null && !apiShape.hitbox();
+        if (!shaped && hush <= 0.0) return null;
+
+        Quaterniond body = apiBody();
+        if (body == null) body = own();
+        if (body == null) body = new Quaterniond();
+
+        Quaterniond model = shaped ? new Quaterniond(apiApplied) : new Quaterniond(body);
+        if (hush > 0.0) {
+            Quaterniond upright = PlayerTilt.dropTwist(new Quaterniond(model)).conjugate().mul(model).normalize();
+            double t = hush * hush * (3.0 - 2.0 * hush);
+            model.slerp(upright, t).normalize();
+        }
+
+        Quaterniond offset = body.conjugate().mul(model).normalize();
+        return PlayerTilt.isVisible(offset.w) ? offset : null;
+    }
+
+    public static boolean apiDriving() {
+        return apiDriver != null;
+    }
+
+    public static boolean apiDrivesBody() {
+        return apiDriver != null && apiShape.hitbox();
+    }
+
+    public static boolean apiCamera() {
+        return apiApplied != null ? apiShape.camera() : settings.rotateCamera();
+    }
+
+    public static TiltSnapshot.Extras localExtras() {
+        if ((apiApplied == null && hush <= 0.0) || !localAllowed()) return TiltSnapshot.Extras.NONE;
+
+        Quaterniond offset = apiModelOffset();
+        TiltSnapshot.Extras extras = new TiltSnapshot.Extras(apiApplied != null && apiShape.free(),
+                offset == null ? new Quaternionf() : new Quaternionf(offset), apiPivot);
+        return extras.none() ? TiltSnapshot.Extras.NONE : extras;
+    }
+
+    public static boolean isLocal(net.minecraft.world.entity.Entity entity) {
+        return entity == Minecraft.getInstance().player;
+    }
+
+    @Nullable
+    public static Quaterniond modelOffset(Player player, float partialTicks) {
+        if (isLocal(player)) return localAllowed() ? apiModelOffset() : null;
+
+        TiltSnapshot snapshot = REMOTE.get(player.getId());
+        return snapshot == null ? null : snapshot.modelOffset(partialTicks);
+    }
+
+    public static float pivot(Player player, float partialTicks) {
+        if (isLocal(player)) return localAllowed() && apiApplied != null ? apiPivot : 0f;
+
+        TiltSnapshot snapshot = REMOTE.get(player.getId());
+        return snapshot == null ? 0f : snapshot.pivot(partialTicks);
+    }
+
+    public static boolean free(Player player) {
+        if (isLocal(player)) return apiApplied != null && apiShape.free();
+
+        TiltSnapshot snapshot = REMOTE.get(player.getId());
+        return snapshot != null && snapshot.extras().free();
+    }
+
+    public static boolean localDrawn() {
+        return localActive() || (localAllowed() && apiModelOffset() != null);
+    }
+
+    @Nullable
+    public static String apiDriverOf(net.minecraft.world.entity.Entity entity) {
+        return isLocal(entity) ? apiDriver : null;
+    }
+
     public static void accept(int entityId, Quaternionf tilt, Quaternionf worldTilt,
-                              @Nullable java.util.UUID deckId, boolean active, boolean boots) {
+                              @Nullable java.util.UUID deckId, boolean active, boolean boots,
+                              TiltSnapshot.Extras extras) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
 
@@ -250,12 +455,12 @@ public final class ClientPlayerTilt {
             return;
         }
 
-        put(entityId, tilt, worldTilt, deckId, active, boots, mc.level.getGameTime());
+        put(entityId, tilt, worldTilt, deckId, active, boots, extras, mc.level.getGameTime());
     }
 
     public static void put(int entityId, Quaternionf tilt, Quaternionf worldTilt,
                            @Nullable java.util.UUID deckId, boolean active, boolean boots,
-                           long gameTime) {
+                           TiltSnapshot.Extras extras, long gameTime) {
         Quaterniond world = new Quaterniond(tilt);
         Quaterniond stamp = new Quaterniond();
 
@@ -268,10 +473,10 @@ public final class ClientPlayerTilt {
             deckId = null;
         }
 
-        if (!active) {
+        if (!active && extras.none()) {
             TiltSnapshot existing = REMOTE.get(entityId);
             if (existing != null) {
-                existing.set(world, stamp, deckId, false, boots, gameTime);
+                existing.set(world, stamp, deckId, false, boots, extras, gameTime);
             }
             return;
         }
@@ -283,9 +488,14 @@ public final class ClientPlayerTilt {
             REMOTE.put(entityId, snapshot);
         }
 
-        snapshot.set(world, stamp, deckId, true, boots, gameTime);
+        snapshot.set(world, stamp, deckId, active, boots, extras, gameTime);
 
         if (fresh) snapshot.beginTick();
+    }
+
+    @Nullable
+    public static java.util.UUID deckOf(net.minecraft.world.entity.Entity entity) {
+        return entity == Minecraft.getInstance().player ? currentDeckId() : deckIdOf(entity.getId());
     }
 
     @Nullable

@@ -65,13 +65,23 @@ public class AeroPlayerTilt {
     }
 
     @SubscribeEvent
+    public static void onTagsUpdated(net.neoforged.neoforge.event.TagsUpdatedEvent event) {
+        com.mlh.aero_player_tilt.tilt.EntityFilter.forget();
+    }
+
+    @SubscribeEvent
     public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         ServerTiltStore.onPlayerLeave(event.getEntity().getUUID());
         BodyTiltBroadcaster.onPlayerLeave(event.getEntity().getUUID());
+        com.mlh.aero_player_tilt.apiimpl.ApiRegistry.forget(event.getEntity().getUUID());
     }
 
     @SubscribeEvent
     public static void onStartTracking(PlayerEvent.StartTracking event) {
+        if (event.getEntity() instanceof ServerPlayer viewer) {
+            com.mlh.aero_player_tilt.apiimpl.ApiRegistry.sendEntityTilt(viewer, event.getTarget());
+        }
+
         if (event.getTarget() instanceof ServerPlayer target
                 && event.getEntity() instanceof ServerPlayer viewer) {
             BodyTiltBroadcaster.sendTo(viewer, target);
@@ -87,6 +97,8 @@ public class AeroPlayerTilt {
     public static void onServerTick(ServerTickEvent.Post event) {
         refusePending(event.getServer());
         BodyTiltBroadcaster.tick(event.getServer());
+        event.getServer().getPlayerList().getPlayers()
+                .forEach(com.mlh.aero_player_tilt.apiimpl.ApiRegistry::track);
     }
 
     @SubscribeEvent

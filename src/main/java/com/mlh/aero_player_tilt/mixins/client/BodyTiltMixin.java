@@ -44,6 +44,9 @@ public abstract class BodyTiltMixin {
 
         if (mc.player == null) return;
 
+        com.mlh.aero_player_tilt.client.tilt.ClientPlayerTilt.resolveSettings(mc.player);
+        com.mlh.aero_player_tilt.client.tilt.ClientPlayerTilt.surface(null);
+
         com.mlh.aero_player_tilt.client.tilt.BedRenderDiagnostics.report(mc.player, partialTick);
 
         if (!BodyTiltController.shouldComputeTilt(mc.player)) {
@@ -94,6 +97,7 @@ public abstract class BodyTiltMixin {
         }
 
         Vector3f surfaceNormal = standing == null ? null : floor.normalOf(standing);
+        com.mlh.aero_player_tilt.client.tilt.ClientPlayerTilt.surface(surfaceNormal);
 
         if (surfaceNormal == null && !suppressed && tracked != null
                 && Config.DROP_CACHE_ON_ALL_MISS.get()) {
@@ -116,7 +120,7 @@ public abstract class BodyTiltMixin {
                         com.mlh.aero_player_tilt.client.tilt.TiltPrediction.predict(mc.player));
 
         boolean airborneOverDeck = !suppressed
-                && Config.flag(Config.PREDICT_LANDING, true)
+                && com.mlh.aero_player_tilt.client.tilt.ClientPlayerTilt.settings().predictLanding()
                 && !mc.player.onGround()
                 && (tracking != null || deck != null);
 
@@ -127,5 +131,19 @@ public abstract class BodyTiltMixin {
 
         com.mlh.aero_player_tilt.client.debug.FrameTrace.body(
                 floor, surfaceNormal, hold, airborneOverDeck, tracked, standing);
+    }
+
+    @Inject(method = "setup", at = @At("TAIL"))
+    private void aero$resolveApiTilt(
+            BlockGetter level, Entity entity,
+            boolean detached, boolean thirdPersonReverse,
+            float partialTick, CallbackInfo ci) {
+        Minecraft mc = Minecraft.getInstance();
+
+        if ((Object) this != mc.gameRenderer.getMainCamera() || mc.player == null) return;
+
+        com.mlh.aero_player_tilt.client.tilt.ClientPlayerTilt.apiFrame(
+                mc.player, partialTick, mc.getTimer().getRealtimeDeltaTicks());
+        com.mlh.aero_player_tilt.apiimpl.ApiRegistry.track(mc.player);
     }
 }

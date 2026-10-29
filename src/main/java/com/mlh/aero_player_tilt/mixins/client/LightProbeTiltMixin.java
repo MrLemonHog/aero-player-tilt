@@ -15,7 +15,7 @@ public abstract class LightProbeTiltMixin {
     private Vec3 aeroCamSync$tiltedLightProbe(Vec3 probe, float partialTick) {
         Entity self = (Entity) (Object) this;
 
-        Quaterniond tilt = PlayerTilt.getRenderOrientation(self, partialTick);
+        Quaterniond tilt = PlayerTilt.getModelOrientation(self, partialTick);
         if (tilt == null) return probe;
 
         return TiltedLightProbe.resolve(self, partialTick, tilt);

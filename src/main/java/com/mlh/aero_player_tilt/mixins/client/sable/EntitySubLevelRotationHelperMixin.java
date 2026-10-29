@@ -23,7 +23,8 @@ public class EntitySubLevelRotationHelperMixin {
                                                        EntitySubLevelRotationHelper.Type type,
                                                        CallbackInfoReturnable<Quaterniond> cir) {
         if (type == EntitySubLevelRotationHelper.Type.ENTITY) {
-            if (com.mlh.aero_player_tilt.tilt.DeckBedAnchor.pinned(cameraEntity)) {
+            if (com.mlh.aero_player_tilt.tilt.DeckBedAnchor.pinned(cameraEntity)
+                    || com.mlh.aero_player_tilt.client.compat.RealCameraCompat.drawsSelf(cameraEntity)) {
                 cir.setReturnValue(null);
             }
             return;
@@ -47,7 +48,12 @@ public class EntitySubLevelRotationHelperMixin {
         if (type != EntitySubLevelRotationHelper.Type.ENTITY) return;
 
         Quaterniond orientation = cir.getReturnValue();
-        if (orientation == null || !PlayerTilt.isRenderTilted(cameraEntity)) return;
+        Quaterniond offset = PlayerTilt.modelOffset(cameraEntity, partialTicks);
+        if (offset != null) {
+            orientation = orientation == null ? offset : new Quaterniond(orientation).mul(offset).normalize();
+        } else if (orientation == null || !PlayerTilt.isRenderTilted(cameraEntity)) {
+            return;
+        }
 
         cir.setReturnValue(com.mlh.aero_player_tilt.client.compat.PhysicsModCompat.apply(
                 cameraEntity, partialTicks, orientation));

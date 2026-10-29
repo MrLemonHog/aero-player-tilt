@@ -13,6 +13,22 @@ public final class ServerConfig {
     public static final ModConfigSpec.BooleanValue TILT_ITEMS =
             BUILDER.define("tiltItems", true);
 
+    public static final ModConfigSpec.EnumValue<com.mlh.aero_player_tilt.tilt.EntityFilter.Mode> MOB_LIST_MODE =
+            BUILDER.comment("BLACKLIST: mobList is never tilted. WHITELIST: only mobList is tilted.")
+                    .defineEnum("mobListMode", com.mlh.aero_player_tilt.tilt.EntityFilter.Mode.BLACKLIST);
+
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> MOB_LIST =
+            BUILDER.comment("Mob ids, \"#\" tags or \"modid:*\", e.g. [\"minecraft:cow\", \"#minecraft:raiders\", \"alexsmobs:*\"]")
+                    .defineListAllowEmpty("mobList", java.util.List.of(), () -> "", entry -> entry instanceof String);
+
+    public static final ModConfigSpec.EnumValue<com.mlh.aero_player_tilt.tilt.EntityFilter.Mode> ITEM_LIST_MODE =
+            BUILDER.comment("BLACKLIST: itemList is never tilted. WHITELIST: only itemList is tilted.")
+                    .defineEnum("itemListMode", com.mlh.aero_player_tilt.tilt.EntityFilter.Mode.BLACKLIST);
+
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> ITEM_LIST =
+            BUILDER.comment("Dropped item ids, \"#\" tags or \"modid:*\", e.g. [\"minecraft:diamond\", \"#minecraft:swords\"]")
+                    .defineListAllowEmpty("itemList", java.util.List.of(), () -> "", entry -> entry instanceof String);
+
     public static final ModConfigSpec.EnumValue<com.mlh.aero_player_tilt.tilt.DeckGravity> DECK_GRAVITY =
             BUILDER.defineEnum("deckGravity", com.mlh.aero_player_tilt.tilt.DeckGravity.DECK);
 
